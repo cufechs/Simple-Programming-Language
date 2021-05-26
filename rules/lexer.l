@@ -55,7 +55,7 @@ COMMENT             "//"(.)*
 "char"                     return CHAR_TYPE;
 "bool"                     return BOOL_TYPE;
 
-    /* Values of Types *
+    /* Values of Types */
 {IDENTIFIER}               return IDENTIFIER;
 (\'.\')                    return CHAR;
 {INTEGER}                  return INTEGER;
