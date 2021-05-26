@@ -60,9 +60,9 @@ COMMENT             "//"(.)*
 "bool"                     return BOOL_TYPE;
 
     /* Values of Types */
-IDENTIFIER                 return IDENTIFIER;
 "true"                     return BOOL;
 "false"                    return BOOL;
+IDENTIFIER                 return IDENTIFIER;
 (\'.\')                    return CHAR; 
 INTEGER                    return INTEGER;
 REAL                       return DOUBLE;
