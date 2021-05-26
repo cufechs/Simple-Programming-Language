@@ -10,9 +10,9 @@ void yyerror(char *);
 /////////////////////////////////////////////////////////
 %}
 
-LETTER              [a-zA-Z_]
+LETTER              [a-zA-Z]
 DIGIT               [0-9]
-IDENTIFIER          {LETTER}({LETTER}|{DIGIT})*
+IDENTIFIER          {LETTER|_}({LETTER}|{DIGIT}|_)*
 INTEGER             [0-9]+
 DOUBLE              (([0-9]*\.[0-9]+)|([0-9]+\.[0-9]*))
 EXP                 ([eE][-+]?{INTEGER})
@@ -21,13 +21,17 @@ COMMENT             "//"(.)*
 
 %%
     /* Operators */
-[-+*/()<>{}=,;:|&^%]        return *yytext;
+[-+*/()<>{}=,;:|&!^%]       return *yytext;
 ">="                        return GE;
 "<="                        return LE;
 "=="                        return EQ;
 "!="                        return NE;
 "++"                        return INC;
 "--"                        return DEC;
+"+="                        return ADD_EQ;
+"-="                        return SUB_EQ;
+"*="                        return MULT_EQ;
+"/="                        return DIV_EQ;
 "<<"                        return SHL;
 ">>"                        return SHR;
 "&&"                        return LOGIC_AND;
@@ -55,19 +59,19 @@ COMMENT             "//"(.)*
 "char"                     return CHAR_TYPE;
 "bool"                     return BOOL_TYPE;
 
-    /* Values of Types *
-{IDENTIFIER}               return IDENTIFIER;
-(\'.\')                    return CHAR;
-{INTEGER}                  return INTEGER;
-{REAL}                     return DOUBLE;
+    /* Values of Types */
+IDENTIFIER                 return IDENTIFIER;
 "true"                     return BOOL;
 "false"                    return BOOL;
+(\'.\')                    return CHAR; 
+INTEGER                    return INTEGER;
+REAL                       return DOUBLE;
 
 
-{COMMENT}     ;          /* ignore comment */
+COMMENT     ;          /* ignore comment */
 [ \t\n]+      ;          /* ignore whitespace */
 
-.               yyerror("Unknown character");
+.                          yyerror("Unknown character");
 
 
 %%

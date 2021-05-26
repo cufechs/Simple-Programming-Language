@@ -7,7 +7,7 @@
 int yylex(void);
 void yyerror(char *s);
 
-//Here will be defination of sym table 😮 /* symbol table */
+//Here will be defination of sym table 😮 /* symbol table */ 
 %}
 
 /* Tokens from lexer */
@@ -36,6 +36,10 @@ void yyerror(char *s);
 // Operators
 %token INC
 %token DEC
+%token ADD_EQ
+%token SUB_EQ
+%token MULT_EQ
+%token DIV_EQ
 %token SHL
 %token SHR
 %token LOGIC_AND
@@ -47,7 +51,7 @@ void yyerror(char *s);
 
 // Values
 %token INTEGER
-%token FLOAT
+%token DOUBLE
 %token CHAR
 %token BOOL
 %token IDENTIFIER
@@ -68,6 +72,8 @@ void yyerror(char *s);
 %left       SHR SHL
 %left       '-' '+'
 %left       '*' '/' '%'
+%right      PRE_INC PRE_DEC
+%left       SUF_INC SUF_DEC
 
 
 %%
