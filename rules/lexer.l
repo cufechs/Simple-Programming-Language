@@ -7,7 +7,7 @@ int multiline_comment_start = 0;
 
 %{
 /////////////////////////////////////////////////////////
-//                  Definitions        {LETTER|_}({LETTER}|{DIGIT}|_)*                 //
+//                  Definitions                        //
 /////////////////////////////////////////////////////////
 %}
 
@@ -28,7 +28,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 %%
     /* Operators */
-[[\-+*/()<>{}=,;:|&!^%\]]       return *yytext;
+[[\-+*/()<>{}=,;:|&!^%\]]    {printf("Operator : %s\n", yytext); return *yytext;}
 ">="                         {printf("Operator : %s\n", yytext); return  GE;}
 "<="                         {printf("Operator : %s\n", yytext); return  LE;}
 "=="                         {printf("Operator : %s\n", yytext); return  EQ;}
@@ -69,8 +69,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "bool"                     {printf("datatype: %s\n", yytext); return BOOL_TYPE;}
 
     /* Values of Types */
-"true"                     {printf("bool value: %s\n", yytext); return BOOL;}
-"false"                     {printf("bool value: %s\n", yytext); return BOOL;}
+"true"                       {printf("bool value: %s\n", yytext); return BOOL;}
+"false"                      {printf("bool value: %s\n", yytext); return BOOL;}
 {IDENTIFIER}                 {printf("Identifier: %s \n", yytext); return IDENTIFIER;}
 (\'.\')                      {printf("char value: %s\n", yytext); return CHAR; }
 {INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}
@@ -79,7 +79,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 
 
-"/*"                       {multiline_comment_start = yylineno; BEGIN COMMENT; printf("multiline comment started at %d\n", yylineno);}
+"/*"                        {multiline_comment_start = yylineno; BEGIN COMMENT; printf("multiline comment started at %d\n", yylineno);}
 <COMMENT>.|{WHITESPACE}     ;
 <COMMENT>\n                 ;
 <COMMENT>"*/"               {BEGIN INITIAL; printf("multiline comment ended at line %d\n", yylineno);}

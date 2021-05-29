@@ -11,7 +11,6 @@ int yyerror(char *s);
 %}
 
 
-
 /* Tokens from lexer */
 // Data types
 %token INT_TYPE
