@@ -99,6 +99,7 @@ line_stmt: function
          ;
 
 function: data_type IDENTIFIER '(' argument_list ')' scope_stmt
+        | data_type IDENTIFIER '(' argument_list ')' ';' {printf("function definition\n");}
         ;
 
 argument_list: arguments
@@ -122,12 +123,15 @@ stmts: stmts stmt
 stmt: scope_stmt | atomic_stmt
     ;
 
-atomic_stmt: if_block | while_block | for_block | declaration | print 
+atomic_stmt: if_block | while_block | for_block 
+    | switch_block {printf("switch atmoic: %s\n", $1);}
+    | case_block | declaration | print 
     | scan | function_invoke ';' | RETURN ';' | CONTINUE ';' 
     | BREAK ';' | RETURN sub_expression ';'
     ;
 
-declaration: data_type declaration_list ';'     
+declaration: data_type declaration_list ';'  
+            | CONST data_type declaration_list ';' 
             | declaration_list ';' | unary_expression ';'
             ;
 
@@ -148,6 +152,12 @@ for_block: FOR '(' expression_statement expression_statement ')' stmt
 while_block: WHILE '(' expression ')' stmt 
            ;        
 
+switch_block: SWITCH '(' expression ')' stmt   {printf("switch\n");}
+            ;
+
+case_block: CASE expression ':' stmt   {printf("case\n");}
+          | DEFAULT ':' stmt            {printf("default case\n");}
+          ;
 
 expression_statement: expression ';'
           | ';'
@@ -163,6 +173,11 @@ sub_expression: sub_expression '>' sub_expression
                 | sub_expression NE sub_expression
                 | sub_expression LE sub_expression
                 | sub_expression GE sub_expression
+                | sub_expression SHR sub_expression
+                | sub_expression SHL sub_expression
+                | sub_expression '^' sub_expression
+                | sub_expression '|' sub_expression
+                | sub_expression '&' sub_expression
                 | sub_expression LOGIC_AND sub_expression
                 | sub_expression LOGIC_OR sub_expression
                 | '!' sub_expression
@@ -202,7 +217,7 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression
                      | primitive_constants
                      ;
   
-unary_expression: IDENTIFIER INC
+unary_expression: IDENTIFIER INC  {printf("IDENTIFIER %s increment\n", $1);}
                | IDENTIFIER DEC
                | INC IDENTIFIER
                | DEC IDENTIFIER
@@ -220,7 +235,7 @@ data_type: INT_TYPE
          | VOID
          ;
 
-   
+   //values of integer, char, or double
 primitive_constants: INTEGER 
                | CHAR 
                | DOUBLE 

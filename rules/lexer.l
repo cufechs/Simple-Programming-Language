@@ -63,17 +63,17 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
     /* DataTypes and likes */
 "void"                     return VOID;
 "int"                      {printf("datatype: %s\n", yytext);return INT_TYPE;}
-"double"                   return DOUBLE_TYPE;
-"char"                     return CHAR_TYPE;
+"double"                   {printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
+"char"                     {printf("datatype: %s\n", yytext); return CHAR_TYPE;}
 "bool"                     return BOOL_TYPE;
 
     /* Values of Types */
 "true"                     return BOOL;
 "false"                    return BOOL;
 {IDENTIFIER}                 {printf("Identifier: %s \n", yytext); return IDENTIFIER;}
-(\'.\')                  return CHAR; 
+(\'.\')                      {printf("char value: %s\n", yytext); return CHAR; }
 {INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}
-{REAL}                       return DOUBLE;
+{REAL}                       {printf("double value: %s\n", yytext); return DOUBLE;}
 {WHITESPACE}                 ;
 
 "/*"                       {multiline_comment_start = yylineno; BEGIN COMMENT; printf("multiline comment started at %d\n", yylineno);}
