@@ -11,10 +11,6 @@ int yyerror(char *s);
 %}
 
 
-% union {
-    int intVal;
-}
-
 /* Tokens from lexer */
 // Data types
 %token INT_TYPE
