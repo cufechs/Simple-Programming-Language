@@ -29,6 +29,7 @@ int yyerror(char *s);
 %token FOR
 %token UNTIL
 %token WHILE
+%token DO
 %token BREAK
 %token CONTINUE
 %token RETURN
@@ -125,6 +126,7 @@ stmt: scope_stmt | atomic_stmt
 
 atomic_stmt: if_block | while_block | for_block 
     | switch_block {printf("switch atmoic: %s\n", $1);}
+    | do_while_block ';' 
     | case_block | declaration | print 
     | scan | function_invoke ';' | RETURN ';' | CONTINUE ';' 
     | BREAK ';' | RETURN sub_expression ';'
@@ -151,6 +153,9 @@ for_block: FOR '(' expression_statement expression_statement ')' stmt
 
 while_block: WHILE '(' expression ')' stmt 
            ;        
+
+do_while_block: DO stmt WHILE '(' expression ')'
+                ;
 
 switch_block: SWITCH '(' expression ')' stmt   {printf("switch\n");}
             ;
@@ -239,6 +244,7 @@ data_type: INT_TYPE
 primitive_constants: INTEGER 
                | CHAR 
                | DOUBLE 
+               | BOOL
                ;
 
 scan: SCAN '(' STRING ',' '&' IDENTIFIER ')' ';'

@@ -46,6 +46,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
     /* Reserved Words */
 "for"                      return FOR;
+"do"                       return DO;
 "while"                    return WHILE;
 "until"                    return UNTIL;
 "switch"                   return SWITCH;
@@ -65,11 +66,11 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "int"                      {printf("datatype: %s\n", yytext);return INT_TYPE;}
 "double"                   {printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
 "char"                     {printf("datatype: %s\n", yytext); return CHAR_TYPE;}
-"bool"                     return BOOL_TYPE;
+"bool"                     {printf("datatype: %s\n", yytext); return BOOL_TYPE;}
 
     /* Values of Types */
-"true"                     return BOOL;
-"false"                    return BOOL;
+"true"                     {printf("bool value: %s\n", yytext); return BOOL;}
+"false"                     {printf("bool value: %s\n", yytext); return BOOL;}
 {IDENTIFIER}                 {printf("Identifier: %s \n", yytext); return IDENTIFIER;}
 (\'.\')                      {printf("char value: %s\n", yytext); return CHAR; }
 {INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}

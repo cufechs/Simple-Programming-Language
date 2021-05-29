@@ -1,3 +1,4 @@
+bool bl = true;
 int a = 2;
 int z = a;
 const int aa = 900;
@@ -18,6 +19,11 @@ int main(int param1, int param2) {
 
         }
     }
+
+    int i = 0;
+    do {
+
+    } while(i < 10);
 
     double d = 2.0;
 
