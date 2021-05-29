@@ -120,7 +120,7 @@ In N, we support complex expressions similar to those of C-language. We support 
 
 **e.g.**
 ```C++
-(((++x) = y++) = (8 * 7 - MAX) ^ (1 << i)) = (z = 3);
+((x++ == --y) == true) ;
 ```
 
 ## Comments
