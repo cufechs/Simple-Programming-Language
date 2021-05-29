@@ -59,7 +59,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "else"                     return ELSE;
 "printf"                    return PRINT;
 "scanf"                     return SCAN;
-"const"                    return CONST;
+"const"                    {printf("CONST\n"); return CONST;}
 
     /* DataTypes and likes */
 "void"                     return VOID;
@@ -76,6 +76,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 {INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}
 {REAL}                       {printf("double value: %s\n", yytext); return DOUBLE;}
 {WHITESPACE}                 ;
+
+
 
 "/*"                       {multiline_comment_start = yylineno; BEGIN COMMENT; printf("multiline comment started at %d\n", yylineno);}
 <COMMENT>.|{WHITESPACE}     ;

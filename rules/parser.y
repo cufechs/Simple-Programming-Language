@@ -82,9 +82,9 @@ int yyerror(char *s);
 %right      '!'
 
 
+%nonassoc PRECEED_ELSE
 %nonassoc ELSE
 %nonassoc UMINUS
-%nonassoc PRECEED_ELSE
 %nonassoc PRECEED_FUNC
 
 %%
@@ -133,7 +133,7 @@ atomic_stmt: if_block | while_block | for_block
     ;
 
 declaration: data_type declaration_list ';'  
-            | CONST data_type declaration_list ';' 
+            | CONST data_type declaration_list ';'   
             | declaration_list ';' | unary_expression ';'
             ;
 
