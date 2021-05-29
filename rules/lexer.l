@@ -68,7 +68,7 @@ INTEGER                    return INTEGER;
 REAL                       return DOUBLE;
 
 
-COMMENT     ;          /* ignore comment */
+COMMENT       ;          /* ignore comment */
 [ \t\n]+      ;          /* ignore whitespace */
 
 .                          yyerror("Unknown character");
