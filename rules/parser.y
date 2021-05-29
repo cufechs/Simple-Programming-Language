@@ -26,7 +26,7 @@ void yyerror(char *s);
 %token CASE
 %token DEFAULT
 %token FOR
-%token UNTIL
+%token DO
 %token WHILE
 %token BREAK
 %token CONTINUE

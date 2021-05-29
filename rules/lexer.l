@@ -40,7 +40,7 @@ COMMENT             "//"(.)*
     /* Reserved Words */
 "for"                      return FOR;
 "while"                    return WHILE;
-"until"                    return UNTIL;
+"do"                       return DO;
 "switch"                   return SWITCH;
 "case"                     return CASE;
 "default"                  return DEFAULT;
