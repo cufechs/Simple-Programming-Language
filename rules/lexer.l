@@ -29,43 +29,43 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 %%
     /* Operators */
 [[\-+*/()<>{}=,;:|&!^%\]]       return *yytext;
-">="                        return GE;
-"<="                        return LE;
-"=="                        return EQ;
-"!="                        return NE;
-"++"                        return INC;
-"--"                        return DEC;
-"+="                        {printf("ADD_EQ\n"); return ADD_EQ;}
-"-="                        {printf("SUB_EQ\n"); return SUB_EQ;}
-"*="                        {printf("MULT_EQ\n"); return MULT_EQ;}
-"/="                        {printf("DIV_EQ\n"); return DIV_EQ;}
-"<<"                        return SHL;
-">>"                        return SHR;
-"&&"                        return LOGIC_AND;
-"||"                        return LOGIC_OR;
+">="                         {printf("Operator : %s\n", yytext); return  GE;}
+"<="                         {printf("Operator : %s\n", yytext); return  LE;}
+"=="                         {printf("Operator : %s\n", yytext); return  EQ;}
+"!="                         {printf("Operator : %s\n", yytext); return  NE;}
+"++"                         {printf("Operator : %s\n", yytext); return  INC;}
+"--"                         {printf("Operator : %s\n", yytext); return  DEC;}
+"+="                         {printf("Operator : %s\n", yytext); return  ADD_EQ;}
+"-="                         {printf("Operator : %s\n", yytext); return  SUB_EQ;}
+"*="                         {printf("Operator : %s\n", yytext); return  MULT_EQ;}
+"/="                         {printf("Operator : %s\n", yytext); return  DIV_EQ;}
+"<<"                         {printf("Operator : %s\n", yytext); return  SHL;}
+">>"                         {printf("Operator : %s\n", yytext); return  SHR;}
+"&&"                         {printf("Operator : %s\n", yytext); return  LOGIC_AND;}
+"||"                         {printf("Operator : %s\n", yytext); return  LOGIC_OR;}
 
     /* Reserved Words */
-"for"                      return FOR;
-"do"                       return DO;
-"while"                    return WHILE;
-"until"                    return UNTIL;
-"switch"                   return SWITCH;
-"case"                     return CASE;
-"default"                  return DEFAULT;
-"continue"                 return CONTINUE;
-"break"                    return BREAK;
-"return"                   return RETURN;
-"if"                       return IF;
-"else"                     return ELSE;
-"printf"                    return PRINT;
-"scanf"                     return SCAN;
-"const"                    {printf("CONST\n"); return CONST;}
+"for"                       {printf("Reserved word: %s\n", yytext); return  FOR;}
+"do"                        {printf("Reserved word: %s\n", yytext); return  DO;}
+"while"                     {printf("Reserved word: %s\n", yytext); return  WHILE;}
+"switch"                    {printf("Reserved word: %s\n", yytext); return  SWITCH;}
+"case"                      {printf("Reserved word: %s\n", yytext); return  CASE;}
+"default"                   {printf("Reserved word: %s\n", yytext); return  DEFAULT;}
+"continue"                  {printf("Reserved word: %s\n", yytext); return  CONTINUE;}
+"break"                     {printf("Reserved word: %s\n", yytext); return  BREAK;}
+"return"                    {printf("Reserved word: %s\n", yytext); return  RETURN;}
+"if"                        {printf("Reserved word: %s\n", yytext); return  IF;}
+"else"                      {printf("Reserved word: %s\n", yytext); return  ELSE;}
+"printf"                    {printf("Reserved word: %s\n", yytext); return  PRINT;}
+"scanf"                     {printf("Reserved word: %s\n", yytext); return  SCAN;}
+"const"                     {printf("Reserved word: %s\n", yytext); return CONST;}
 
     /* DataTypes and likes */
-"void"                     return VOID;
+"void"                     {printf("datatype: %s\n", yytext); return  VOID;}
 "int"                      {printf("datatype: %s\n", yytext);return INT_TYPE;}
 "double"                   {printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
 "char"                     {printf("datatype: %s\n", yytext); return CHAR_TYPE;}
+"string"                   {printf("datatype: %s\n", yytext); return STRING_TYPE;}
 "bool"                     {printf("datatype: %s\n", yytext); return BOOL_TYPE;}
 
     /* Values of Types */

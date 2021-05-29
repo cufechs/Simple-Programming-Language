@@ -28,7 +28,6 @@ int yyerror(char *s);
 %token CASE
 %token DEFAULT
 %token FOR
-%token UNTIL
 %token WHILE
 %token DO
 %token BREAK
@@ -38,6 +37,7 @@ int yyerror(char *s);
 %token SCAN
 %token STRING
 %token WHITESPACE
+%token STRING_TYPE
 
 // Operators
 %token INC
