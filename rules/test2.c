@@ -3,7 +3,9 @@ int a = 2;
 int z = a;
 const int aa = 900;
 a++;
+
 char ch = 'w';
+
 
 /*
 multiline comment
@@ -20,8 +22,16 @@ int main(int param1, int param2) {
         }
     }
 
+    if (4+5 > 1-8*3/5) {
+
+    } else {
+        
+    }
+
     int i = 0;
     do {
+
+        double d2 = 5e-10;
 
     } while(i < 10);
 
