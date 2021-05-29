@@ -39,6 +39,9 @@ int main(int param1, int param2) {
 
     double d = 2.0;
 
+    int q = a % 3;
+    q = 1 % 2;
+
     printf("abc\n");
     scanf("%f",  &d);
 
