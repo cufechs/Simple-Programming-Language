@@ -239,6 +239,7 @@ data_type: INT_TYPE
 primitive_constants: INTEGER 
                | CHAR 
                | DOUBLE 
+               | BOOL 
                ;
 
 scan: SCAN '(' STRING ',' '&' IDENTIFIER ')' ';'
