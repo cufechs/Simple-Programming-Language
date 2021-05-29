@@ -1,23 +1,30 @@
 %{
+#include <stdio.h>
 #include <stdlib.h>
 #include "y.tab.h"
-void yyerror(char *);
+int multiline_comment_start = 0;
 %}
 
 %{
 /////////////////////////////////////////////////////////
-//                  Definitions                        //
+//                  Definitions        {LETTER|_}({LETTER}|{DIGIT}|_)*                 //
 /////////////////////////////////////////////////////////
 %}
 
+%option yylineno
+
 LETTER              [a-zA-Z]
-DIGIT               [0-9]
-IDENTIFIER          {LETTER|_}({LETTER}|{DIGIT}|_)*
 INTEGER             [0-9]+
+DIGIT               [0-9]
+WHITESPACE          [ \t\r\f\v]+
+IDENTIFIER          (_|{LETTER})({LETTER}|{DIGIT}|_)*
 DOUBLE              (([0-9]*\.[0-9]+)|([0-9]+\.[0-9]*))
 EXP                 ([eE][-+]?{INTEGER})
 REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
-COMMENT             "//"(.)*
+ //COMMENT             "//"(.)*
+  
+%x COMMENT 
+
 
 %%
     /* Operators */
@@ -40,7 +47,7 @@ COMMENT             "//"(.)*
     /* Reserved Words */
 "for"                      return FOR;
 "while"                    return WHILE;
-"do"                       return DO;
+"until"                    return UNTIL;
 "switch"                   return SWITCH;
 "case"                     return CASE;
 "default"                  return DEFAULT;
@@ -49,12 +56,13 @@ COMMENT             "//"(.)*
 "return"                   return RETURN;
 "if"                       return IF;
 "else"                     return ELSE;
-"print"                    return PRINT;
+"printf"                    return PRINT;
+"scanf"                     return SCAN;
 "const"                    return CONST;
 
     /* DataTypes and likes */
 "void"                     return VOID;
-"int"                      return INT_TYPE;
+"int"                      {printf("datatype: %s\n", yytext);return INT_TYPE;}
 "double"                   return DOUBLE_TYPE;
 "char"                     return CHAR_TYPE;
 "bool"                     return BOOL_TYPE;
@@ -62,16 +70,25 @@ COMMENT             "//"(.)*
     /* Values of Types */
 "true"                     return BOOL;
 "false"                    return BOOL;
-IDENTIFIER                 return IDENTIFIER;
-(\'.\')                    return CHAR; 
-INTEGER                    return INTEGER;
-REAL                       return DOUBLE;
+{IDENTIFIER}                 {printf("Identifier: %s \n", yytext); return IDENTIFIER;}
+(\'.\')                  return CHAR; 
+{INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}
+{REAL}                       return DOUBLE;
+{WHITESPACE}                 ;
 
+"/*"                       {multiline_comment_start = yylineno; BEGIN COMMENT; printf("multiline comment started at %d\n", yylineno);}
+<COMMENT>.|{WHITESPACE}     ;
+<COMMENT>\n                 ;
+<COMMENT>"*/"               {BEGIN INITIAL; printf("multiline comment ended at line %d\n", yylineno);}
+<COMMENT><<EOF>>            {printf("Line %d multiline comment not terminated\n", multiline_comment_start); yyterminate();}             
+"//".*                      {printf("single line comment at line %d\n", yylineno);}
 
-COMMENT       ;          /* ignore comment */
-[ \t\n]+      ;          /* ignore whitespace */
+\"[^\"\n]*\"                return STRING;
+\"[^\"\n]*$                 {printf("Line %d missing quatation for string %s\n", yylineno, yytext);}
+{DIGIT}+({LETTER}|_)+       {printf("Line %d cannot start an identifier with a digit %s\n", yylineno, yytext);}
+\n                          ;
 
-.                          yyerror("Unknown character");
+.                          {printf("Unrecognized %s\n", yytext); return yytext;}
 
 
 %%
