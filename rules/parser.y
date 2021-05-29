@@ -135,7 +135,7 @@ atomic_stmt: if_block | while_block | for_block
 
 declaration: data_type declaration_list ';'  
             | CONST data_type declaration_list ';'   
-            | declaration_list ';' | unary_expression ';'
+            | declaration_list ';' | unary_expression ';' 
             ;
 
 declaration_list: declaration_list ',' sub_declaration
@@ -189,7 +189,7 @@ sub_expression: sub_expression '>' sub_expression
                 | '!' sub_expression
                 | arithmetic_expression
                 | assign_expression
-                | unary_expression
+                | unary_expression 
                 ;
 
 assign_expression: lhs assign_operation arithmetic_expression
@@ -223,16 +223,16 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression
                      | primitive_constants
                      ;
   
-unary_expression: IDENTIFIER INC  {printf("IDENTIFIER %s increment\n", $1);}
-               | IDENTIFIER DEC
-               | INC IDENTIFIER
-               | DEC IDENTIFIER
+unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
+               | IDENTIFIER DEC   {printf("POST DECREMENT\n");}
+               | INC IDENTIFIER   {printf("PRE INCREMENT\n");}
+               | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
                ;
 
 identifier: IDENTIFIER 
           ;
 
- 
+
   
 data_type: INT_TYPE
          | DOUBLE_TYPE
@@ -253,13 +253,14 @@ scan: SCAN '(' STRING ',' '&' IDENTIFIER ')' ';'
 
 print: PRINT '(' STRING ')' ';'
      | PRINT '(' STRING ',' IDENTIFIER ')' ';'
+     | PRINT '(' STRING ',' primitive_constants ')' ';'
      ;
 
 lhs: identifier
    | array_indexing
    ;
 
-array_indexing: identifier '[' array_index ']'
+array_indexing: identifier '[' array_index ']'  {printf("array***********************\n");}
               | identifier '[' array_index ']' '[' array_index ']'
               ;
 
@@ -268,7 +269,7 @@ array_index:  primitive_constants
               ;
 
 assign_operation:  '='
-                | ADD_EQ
+                | ADD_EQ 
                 | SUB_EQ
                 | MULT_EQ
                 | DIV_EQ

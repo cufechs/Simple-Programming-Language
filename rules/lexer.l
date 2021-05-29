@@ -28,17 +28,17 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 %%
     /* Operators */
-[-+*/()<>{}=,;:|&!^%]       return *yytext;
+[[\-+*/()<>{}=,;:|&!^%\]]       return *yytext;
 ">="                        return GE;
 "<="                        return LE;
 "=="                        return EQ;
 "!="                        return NE;
 "++"                        return INC;
 "--"                        return DEC;
-"+="                        return ADD_EQ;
-"-="                        return SUB_EQ;
-"*="                        return MULT_EQ;
-"/="                        return DIV_EQ;
+"+="                        {printf("ADD_EQ\n"); return ADD_EQ;}
+"-="                        {printf("SUB_EQ\n"); return SUB_EQ;}
+"*="                        {printf("MULT_EQ\n"); return MULT_EQ;}
+"/="                        {printf("DIV_EQ\n"); return DIV_EQ;}
 "<<"                        return SHL;
 ">>"                        return SHR;
 "&&"                        return LOGIC_AND;
