@@ -215,7 +215,7 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression
                      | arithmetic_expression '-' arithmetic_expression
                      | arithmetic_expression '*' arithmetic_expression
                      | arithmetic_expression '/' arithmetic_expression
-                     | arithmetic_expression '%' arithmetic_expression  {printf("=========== modulus =======\n");}
+                     | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
