@@ -3,6 +3,13 @@
 #include <stdlib.h>
 #include "y.tab.h"
 int multiline_comment_start = 0;
+char currentType[32];
+char currentID[32];
+char currentValue[32]; //int,char,double,bool
+int globalScope = 0;
+
+
+
 %}
 
 %{
@@ -28,21 +35,41 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 %%
     /* Operators */
-[[\-+*/()<>{}=,;:|&!^%\]]    {printf("Operator : %s\n", yytext); return *yytext;}
+[[\-+*/()<>{}:|&!^%\]]    {printf("Operator : %s\n", yytext); return *yytext;}
 ">="                         {printf("Operator : %s\n", yytext); return  GE;}
 "<="                         {printf("Operator : %s\n", yytext); return  LE;}
 "=="                         {printf("Operator : %s\n", yytext); return  EQ;}
 "!="                         {printf("Operator : %s\n", yytext); return  NE;}
 "++"                         {printf("Operator : %s\n", yytext); return  INC;}
 "--"                         {printf("Operator : %s\n", yytext); return  DEC;}
-"+="                         {printf("Operator : %s\n", yytext); return  ADD_EQ;}
-"-="                         {printf("Operator : %s\n", yytext); return  SUB_EQ;}
-"*="                         {printf("Operator : %s\n", yytext); return  MULT_EQ;}
-"/="                         {printf("Operator : %s\n", yytext); return  DIV_EQ;}
+"+="                         {
+                                printf("Operator : %s\n", yytext); 
+                                yylval.op = strdup(yytext);
+                                return  ADD_EQ;}
+"-="                         {
+                                printf("Operator : %s\n", yytext); 
+                                yylval.op = strdup(yytext);
+                                return  SUB_EQ;
+                            }
+"*="                         {
+                                printf("Operator : %s\n", yytext); 
+                                yylval.op = strdup(yytext);
+                                return  MULT_EQ;
+                            }
+"/="                         {
+                                printf("Operator : %s\n", yytext); 
+                                yylval.op = strdup(yytext);
+                                return  DIV_EQ;
+                            }
 "<<"                         {printf("Operator : %s\n", yytext); return  SHL;}
 ">>"                         {printf("Operator : %s\n", yytext); return  SHR;}
 "&&"                         {printf("Operator : %s\n", yytext); return  LOGIC_AND;}
 "||"                         {printf("Operator : %s\n", yytext); return  LOGIC_OR;}
+"="                         {
+                                printf("Operator: %s\n", yytext);
+                                yylval.op = strdup(yytext);
+                                return ASSIGN_OP;
+                            }
 
     /* Reserved Words */
 "for"                       {printf("Reserved word: %s\n", yytext); return  FOR;}
@@ -60,21 +87,45 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "scanf"                     {printf("Reserved word: %s\n", yytext); return  SCAN;}
 "const"                     {printf("Reserved word: %s\n", yytext); return CONST;}
 
+";"                         {printf("Line ended***************\n"); return SEMICOLON;}
+","                         {return COMMA;}
+
     /* DataTypes and likes */
-"void"                     {printf("datatype: %s\n", yytext); return  VOID;}
-"int"                      {printf("datatype: %s\n", yytext);return INT_TYPE;}
-"double"                   {printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
-"char"                     {printf("datatype: %s\n", yytext); return CHAR_TYPE;}
-"string"                   {printf("datatype: %s\n", yytext); return STRING_TYPE;}
-"bool"                     {printf("datatype: %s\n", yytext); return BOOL_TYPE;}
+"void"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return  VOID;}
+"int"                      {strcpy(currentType, yytext); printf("datatype: %s\n", yytext);return INT_TYPE;}
+"double"                   {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
+"char"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return CHAR_TYPE;}
+"string"                   {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return STRING_TYPE;}
+"bool"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return BOOL_TYPE;}
 
     /* Values of Types */
-"true"                       {printf("bool value: %s\n", yytext); return BOOL;}
+"true"                       {
+                                printf("bool value: %s\n", yytext); 
+                                yylval.value = strdup(yytext);
+                                return BOOL;
+                            }
 "false"                      {printf("bool value: %s\n", yytext); return BOOL;}
-{IDENTIFIER}                 {printf("Identifier: %s \n", yytext); return IDENTIFIER;}
-(\'.\')                      {printf("char value: %s\n", yytext); return CHAR; }
-{INTEGER}                    {printf("integer value: %s\n", yytext); return INTEGER;}
-{REAL}                       {printf("double value: %s\n", yytext); return DOUBLE;}
+{IDENTIFIER}                 {
+                                printf("CurrentType: %s ", currentType);
+                                printf("Identifier: %s \n", yytext); 
+                                yylval.idName = strdup(yytext);
+                                strcpy(currentID, yylval.idName);
+                                return IDENTIFIER;}
+(\'.\')                      {
+                                printf("char value: %s\n", yytext);
+                                yylval.cVal = yytext[1];
+                                strcpy(currentValue, yytext);
+                                return CHAR; }
+{INTEGER}                    {
+                                printf("integer value: %s\n", yytext);
+                                yylval.value = atoi(yytext);
+                                strcpy(currentValue, yytext);
+                                return INTEGER;}
+{REAL}                       {
+                                printf("double value: %s\n", yytext); 
+                                yylval.dVal = atof(yytext);
+                                strcpy(currentValue, yytext);
+                                return DOUBLE;}
 {WHITESPACE}                 ;
 
 

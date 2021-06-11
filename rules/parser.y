@@ -10,6 +10,15 @@ int yyerror(char *s);
 //Here will be defination of sym table 😮 /* symbol table */ 
 %}
 
+%union {
+    int iVal;
+    char cVal;
+    char* idName;
+    char *sVal;
+    double dVal;
+    char* op;
+    char *value; //general value for int, double, bool, char 
+}
 
 /* Tokens from lexer */
 // Data types
@@ -37,14 +46,11 @@ int yyerror(char *s);
 %token STRING
 %token WHITESPACE
 %token STRING_TYPE
+%token SEMICOLON
 
 // Operators
 %token INC
 %token DEC
-%token ADD_EQ
-%token SUB_EQ
-%token MULT_EQ
-%token DIV_EQ
 %token SHL
 %token SHR
 %token LOGIC_AND
@@ -55,18 +61,22 @@ int yyerror(char *s);
 %token LE
 
 // Values
-%token INTEGER
-%token DOUBLE
-%token CHAR
-%token BOOL
-%token IDENTIFIER
-
-
-
+%token<value> INTEGER
+%token<value> DOUBLE
+%token<value> CHAR
+%token<value> BOOL
+// %token<idName> IDENTIFIER
+// %type<idName> lhs identifier array_indexing
+%token<idName> IDENTIFIER 
+%type<value> lhs identifier array_indexing
+%token<op> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
+%type<op> assign_operation
+%type<value> arithmetic_expression primitive_constants 
+%token<value> '(' '-' ')'
 
 // Order matters here:
-%right      '='
-%left       ','
+%right<op>  ASSIGN_OP
+%left       COMMA
 %left       LOGIC_OR
 %left       LOGIC_AND
 %left       '|'
@@ -82,6 +92,9 @@ int yyerror(char *s);
 %right      '!'
 
 
+
+
+
 %nonassoc PRECEED_ELSE
 %nonassoc ELSE
 %nonassoc UMINUS
@@ -91,8 +104,8 @@ int yyerror(char *s);
 
 
 
-start: start line_stmt 
-     | line_stmt  
+start: start line_stmt {printf("\n"); }
+     | line_stmt  {printf("\n"); }
      ;
     
 line_stmt: function 
@@ -100,14 +113,14 @@ line_stmt: function
          ;
 
 function: data_type IDENTIFIER '(' argument_list ')' scope_stmt
-        | data_type IDENTIFIER '(' argument_list ')' ';' {printf("function definition\n");}
+        | data_type IDENTIFIER '(' argument_list ')' SEMICOLON {printf("function definition\n");}
         ;
 
 argument_list: arguments
              | 
              ;
 
-arguments: arguments ',' argument 
+arguments: arguments COMMA argument 
          | argument
          ;
 
@@ -125,23 +138,25 @@ stmt: scope_stmt | atomic_stmt
     ;
 
 atomic_stmt: if_block | while_block | for_block 
-    | switch_block {printf("switch atmoic: %s\n", $1);}
-    | do_while_block ';' 
+    | switch_block 
+    | do_while_block SEMICOLON 
     | case_block | declaration | print 
-    | scan | function_invoke ';' | RETURN ';' | CONTINUE ';' 
-    | BREAK ';' | RETURN sub_expression ';'
+    | scan | function_invoke SEMICOLON | RETURN SEMICOLON | CONTINUE SEMICOLON 
+    | BREAK SEMICOLON | RETURN sub_expression SEMICOLON
     ;
 
-declaration: data_type declaration_list ';'  
-            | CONST data_type declaration_list ';'   
-            | declaration_list ';' | unary_expression ';' 
+declaration: data_type declaration_list SEMICOLON  
+            | CONST data_type declaration_list SEMICOLON   
+            | declaration_list SEMICOLON | unary_expression SEMICOLON 
             ;
 
-declaration_list: declaration_list ',' sub_declaration
+declaration_list: declaration_list COMMA sub_declaration
                 | sub_declaration
                 ;
 
-sub_declaration: assign_expression | identifier | array_indexing
+sub_declaration: assign_expression 
+                | identifier
+                | array_indexing
                 ;
 
 if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE | IF '(' expression ')' stmt ELSE stmt 
@@ -164,11 +179,11 @@ case_block: CASE expression ':' stmt   {printf("case\n");}
           | DEFAULT ':' stmt            {printf("default case\n");}
           ;
 
-expression_statement: expression ';'
-          | ';'
+expression_statement: expression SEMICOLON
+          | SEMICOLON
           ;
 
-expression: expression ',' sub_expression
+expression: expression COMMA sub_expression
           | sub_expression
           ;
 
@@ -191,17 +206,17 @@ sub_expression: sub_expression '>' sub_expression
                 | unary_expression 
                 ;
 
-assign_expression: lhs assign_operation arithmetic_expression
+assign_expression: lhs assign_operation arithmetic_expression {printf("IDENTIFIER: %s ",$1); printf("Assign operation: %s ", $2); printf("Value: %s\n", $2);}
                  | lhs assign_operation array_indexing
                  | lhs assign_operation function_invoke
                  | lhs assign_operation unary_expression
                  ;
 
-function_invoke: identifier '(' parameter_list ')'  {printf("invoking function %s\n", $2);}
-               | identifier '(' ')'  {printf("invoking function %s\n", $1);}
+function_invoke: identifier '(' parameter_list ')'  
+               | identifier '(' ')'  
                ;
 
-parameter_list: parameter_list ',' parameter
+parameter_list: parameter_list COMMA parameter
               | parameter
               ;
 
@@ -228,7 +243,7 @@ unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
                | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
                ;
 
-identifier: IDENTIFIER 
+identifier: IDENTIFIER {printf("IDENTIFIER NAME: %s\n", $1);}
           ;
 
 
@@ -242,17 +257,17 @@ data_type: INT_TYPE
 
    //values of integer, char, or double
 primitive_constants: INTEGER 
-               | CHAR 
+               | CHAR           {printf("CHAR VALUE: %c\n", $1);}
                | DOUBLE 
                | BOOL
                ;
 
-scan: SCAN '(' STRING ',' '&' IDENTIFIER ')' ';'
+scan: SCAN '(' STRING COMMA '&' IDENTIFIER ')' SEMICOLON
     ;
 
-print: PRINT '(' STRING ')' ';'
-     | PRINT '(' STRING ',' IDENTIFIER ')' ';'
-     | PRINT '(' STRING ',' primitive_constants ')' ';'
+print: PRINT '(' STRING ')' SEMICOLON
+     | PRINT '(' STRING COMMA IDENTIFIER ')' SEMICOLON
+     | PRINT '(' STRING COMMA primitive_constants ')' SEMICOLON
      ;
 
 lhs: identifier
@@ -267,7 +282,7 @@ array_index:  primitive_constants
               | identifier
               ;
 
-assign_operation:  '='
+assign_operation:  ASSIGN_OP
                 | ADD_EQ 
                 | SUB_EQ
                 | MULT_EQ
