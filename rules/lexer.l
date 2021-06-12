@@ -11,17 +11,6 @@ int globalScope = 0;
 
 
 
-// symbol table item
-struct SymbolTable {
-    char name[100];
-    char class[100];
-    char type[100];
-    char value[100];
-    int scope;
-    int line_num;
-    int length;
-    int params_count;
-}SymbolTable[1001];
 
 
 %}
@@ -49,7 +38,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 %%
     /* Operators */
-[[\-+*/()<>{}:|&!^%\]]    {printf("Operator : %s\n", yytext); return *yytext;}
+[[\-+*/()<>}:|&!^%\]]    { return *yytext;}
 ">="                         {printf("Operator : %s\n", yytext); return  GE;}
 "<="                         {printf("Operator : %s\n", yytext); return  LE;}
 "=="                         {printf("Operator : %s\n", yytext); return  EQ;}
@@ -57,24 +46,24 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "++"                         {printf("Operator : %s\n", yytext); return  INC;}
 "--"                         {printf("Operator : %s\n", yytext); return  DEC;}
 "+="                         {
-                                printf("Operator : %s\n", yytext); 
+                                
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
                                 return  ADD_EQ;}
 "-="                         {
-                                printf("Operator : %s\n", yytext); 
+                                
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
                                 return  SUB_EQ;
                             }
 "*="                         {
-                                printf("Operator : %s\n", yytext); 
+                                
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
                                 return  MULT_EQ;
                             }
 "/="                         {
-                                printf("Operator : %s\n", yytext); 
+                                
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
                                 return  DIV_EQ;
@@ -82,13 +71,17 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "<<"                         {printf("Operator : %s\n", yytext); return  SHL;}
 ">>"                         {printf("Operator : %s\n", yytext); return  SHR;}
 "&&"                         {printf("Operator : %s\n", yytext); return  LOGIC_AND;}
-"||"                         {printf("Operator : %s\n", yytext); return  LOGIC_OR;}
+"||"                         { return  LOGIC_OR;}
 "="                         {
-                                printf("Operator: %s\n", yytext);
+                                
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
                                 return ASSIGN_OP;
                             }
+"{"                         {
+                                return LEFT_BRACE;
+                            }
+
 
     /* Reserved Words */
 "for"                       {printf("Reserved word: %s\n", yytext); return  FOR;}
@@ -100,8 +93,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "continue"                  {printf("Reserved word: %s\n", yytext); return  CONTINUE;}
 "break"                     {printf("Reserved word: %s\n", yytext); return  BREAK;}
 "return"                    {printf("Reserved word: %s\n", yytext); return  RETURN;}
-"if"                        {printf("Reserved word: %s\n", yytext); return  IF;}
-"else"                      {printf("Reserved word: %s\n", yytext); return  ELSE;}
+"if"                        {return  IF;}
+"else"                      {return  ELSE;}
 "printf"                    {printf("Reserved word: %s\n", yytext); return  PRINT;}
 "scanf"                     {printf("Reserved word: %s\n", yytext); return  SCAN;}
 "const"                     {printf("Reserved word: %s\n", yytext); return CONST;}
@@ -112,9 +105,9 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
     /* DataTypes and likes */
 "void"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return  VOID;}
-"int"                      {strcpy(currentType, yytext); printf("datatype: %s\n", yytext);return INT_TYPE;}
-"double"                   {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return DOUBLE_TYPE;}
-"char"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return CHAR_TYPE;}
+"int"                      {strcpy(currentType, yytext); return INT_TYPE;}
+"double"                   {strcpy(currentType, yytext); return DOUBLE_TYPE;}
+"char"                     {strcpy(currentType, yytext); return CHAR_TYPE;}
 "string"                   {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return STRING_TYPE;}
 "bool"                     {strcpy(currentType, yytext); printf("datatype: %s\n", yytext); return BOOL_TYPE;}
 
@@ -132,7 +125,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 yylval.idName = strdup(yytext);
                                 strcpy(currentID, yylval.idName);
                                 //strcpy(currentID, yytext);
-                                printf("[lexer]::IDENTIFIER: %s\n", currentID);
+                                //printf("[lexer]::IDENTIFIER: %s\n", currentID);
                                 //strcpy(yylval.value, yytext);
                                 //strcpy(yylval.node->idName, yytext);
                                 //yylval.node->nodeType = NODE_ID;
@@ -176,7 +169,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 {DIGIT}+({LETTER}|_)+       {printf("Line %d cannot start an identifier with a digit %s\n", yylineno, yytext);}
 \n                          ;
 
-.                          {printf("Unrecognized %s\n", yytext); return yytext;}
+.                          {printf("Unrecognized token\n");}
 
 
 %%

@@ -1,12 +1,7 @@
+#include "utils.h"
+
 #define MAX_ID_LENGTH 32
 
-enum DataType {
-    TYPE_INT,
-    TYPE_DOUBLE,
-    TYPE_CHAR,
-    TYPE_VOID,
-    TYPE_BOOL
-};
 
 enum NodeType {
     NODE_ID, //identifier 

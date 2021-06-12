@@ -20,7 +20,7 @@ int firstOperandType, secondOperandType;
 int regCount = 0;
 int regNum = 0;
 char currentIdentifier[32];
-
+int isCurrentIdentifierInitialized = 0;
 // enum DataType {
 //     TYPE_INT,
 //     TYPE_DOUBLE,
@@ -77,6 +77,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %token WHITESPACE
 %token STRING_TYPE
 %token SEMICOLON
+%token LEFT_BRACE
 
 // Operators
 %token INC
@@ -113,7 +114,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %token<node> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
 %type<node> assign_operation
 %type<node> arithmetic_expression  primitive_constants
-%token<node> '(' '-' ')'
+%token<node> '(' '-' ')' 
 
 // Order matters here:
 %right<op>  ASSIGN_OP
@@ -168,7 +169,7 @@ arguments: arguments COMMA argument
 argument: data_type identifier
         ;
 
-scope_stmt: '{' stmts '}'
+scope_stmt: LEFT_BRACE {globalScope++; printf("[DEBUG] open scope at line %d\n", yylineno);} stmts '}' {printf("[DEBUG] close scope at line %d\n", yylineno);globalScope--;}
           ;
         
 stmts: stmts stmt  
@@ -195,22 +196,40 @@ atomic_stmt: if_block
             | RETURN sub_expression SEMICOLON
             ;
 
-declaration: data_type declaration_list SEMICOLON 
+declaration: data_type assign_expression SEMICOLON  {printf("variable is initialized, current data type: %s, \n", currentType);}
             | CONST data_type declaration_list SEMICOLON   
             | declaration_list SEMICOLON 
             | unary_expression SEMICOLON 
+            | data_type IDENTIFIER SEMICOLON        {printf("variable %s not initialized\n", $2);}
             ;
 
 declaration_list: declaration_list COMMA sub_declaration
-                | sub_declaration
+                | sub_declaration 
                 ;
 
-sub_declaration: assign_expression 
+sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
                 | identifier
                 | array_indexing
                 ;
 
-if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE | IF '(' expression ')' stmt ELSE stmt 
+
+// declaration: data_type declaration_list SEMICOLON  {printf("variable is initialized, current data type: %s, \n", currentType);}
+//             | CONST data_type declaration_list SEMICOLON   
+//             | declaration_list SEMICOLON 
+//             | unary_expression SEMICOLON 
+//             ;
+
+// declaration_list: declaration_list COMMA sub_declaration
+//                 | sub_declaration 
+//                 ;
+
+// sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
+//                 | identifier
+//                 | array_indexing
+//                 ;
+
+if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE {printf("IF Block prec\n");}
+        | IF '(' expression ')' stmt ELSE stmt {printf("IF Block\n");}
         ;
 
 for_block: FOR '(' expression_statement expression_statement ')' stmt 
@@ -365,12 +384,12 @@ assign_operation:  ASSIGN_OP        {currentOperation = "MOV";}
 %%
 
 char* convertToCharArrayInt(int a) {
-    char* buf = malloc(32); 
+    char* buf = (char*)malloc(32); 
     snprintf(buf, sizeof(buf), "%d", a);
     return buf;
 }
 char* convertToCharArrayDouble(double a) {
-    char* buf = malloc(32); 
+    char* buf = (char*)malloc(32); 
     snprintf(buf, sizeof(buf), "%f", a);
     return buf;
 }
@@ -428,7 +447,7 @@ Node *constantInt(int value) {
     Node *p;
 
     /* allocate node */
-    if ((p = malloc(sizeof(Node))) == NULL)
+    if ((p = (Node*)malloc(sizeof(Node))) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -443,7 +462,7 @@ Node *constantDouble(double value) {
     Node *p;
 
     /* allocate node */
-    if ((p = malloc(sizeof(Node))) == NULL)
+    if ((p = (Node*)malloc(sizeof(Node))) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -459,7 +478,7 @@ Node *createIdentifier(char* i) {
     Node *p;
 
     /* allocate node */
-    if ((p = malloc(sizeof(Node))) == NULL)
+    if ((p = (Node*)malloc(sizeof(Node))) == NULL)
         yyerror("out of memory");
 
     /* copy information */
@@ -478,7 +497,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2) {
         yyerror("Type mismatch");
     }
 
-    if ((res = malloc(sizeof(Node))) == NULL)
+    if ((res = (Node*)malloc(sizeof(Node))) == NULL)
         yyerror("out of memory");
 
     // assuming now that both are of the same type
