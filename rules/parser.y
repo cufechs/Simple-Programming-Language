@@ -35,7 +35,7 @@ char* convertToCharArrayDouble(double a);
 Node *constantInt(int value);
 Node *constantDouble(double value);
 Node *createIdentifier(char* i);
-
+Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 
 %}
 
@@ -282,13 +282,22 @@ parameter: sub_expression
   
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
 arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
+                                                                        $$ = evaluateExpression('+', $1, $3);
                                                                         printf("Arithmetic :+: %d + %d \n", $1->iVal, $3->iVal);
                                                                        }
-                     | arithmetic_expression '-' arithmetic_expression 
+                     | arithmetic_expression '-' arithmetic_expression {
+                                                                        $$ = evaluateExpression('-', $1, $3);
+                                                                        printf("Arithmetic :-: %d - %d \n", $1->iVal, $3->iVal);
+                                                                        printf("[DEBUG] Final result :  %d\n", $$->iVal);
+                                                                       }
                      | arithmetic_expression '*' arithmetic_expression {
+                                                                        $$ = evaluateExpression('*', $1, $3);
                                                                         printf("Arithmetic :*: %d * %d \n", $1->iVal, $3->iVal);
                                                                        }
-                     | arithmetic_expression '/' arithmetic_expression 
+                     | arithmetic_expression '/' arithmetic_expression {
+                                                                        $$ = evaluateExpression('/', $1, $3);
+                                                                        printf("Arithmetic :/: %d / %d \n", $1->iVal, $3->iVal);
+                                                                       }
                      | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
@@ -460,6 +469,34 @@ Node *createIdentifier(char* i) {
     p->line_num = yylineno;
 
     return p;
+}
+
+Node* evaluateExpression(char op, Node* operand1, Node* operand2) {
+    Node* res;
+
+    if (operand1->dataType != operand2->dataType) {
+        yyerror("Type mismatch");
+    }
+
+    if ((res = malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    // assuming now that both are of the same type
+    if (operand1->dataType == TYPE_INT) {
+        int tmp_res = getArithmeticResultInt(operand1->iVal, operand2->iVal, op);
+        res->nodeType = NODE_CONST_VALUE;
+        res->iVal = tmp_res;
+        res->line_num = yylineno;
+        res->dataType = TYPE_INT;
+    } else if (operand1->dataType == TYPE_DOUBLE) {
+        double tmp_res = getArithmeticResultDouble(operand1->dVal, operand2->dVal, op);
+        res->nodeType = NODE_CONST_VALUE;
+        res->dVal = tmp_res;
+        res->line_num = yylineno;
+        res->dataType = TYPE_DOUBLE;
+    }
+
+    return res;
 }
 
 Node *operation(char op, Node* operand1, Node* operand2) {
