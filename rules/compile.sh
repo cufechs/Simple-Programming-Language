@@ -1,3 +1,3 @@
-bison -dy parser.y --verbose 
-flex lexer.l
-gcc -w -g y.tab.c #-ly -ll
+flex lexer.l 
+bison -dy --verbose parser.y 
+g++ -w -g symbolTable.hpp y.tab.c

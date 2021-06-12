@@ -1,10 +1,9 @@
 %{
-// #include <iostream>
-// #include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include "lex.yy.c"
+#include "symbolTable.hpp"
 /* prototypes */
 int yylex(void);
 int yyerror(char *s);
@@ -19,17 +18,11 @@ int regCount = 0;
 int regNum = 0;
 char currentIdentifier[32];
 
-enum DataType {
-    TYPE_INT,
-    TYPE_DOUBLE,
-    TYPE_CHAR,
-    TYPE_VOID,
-    TYPE_BOOL
-};
+
 int getArithmeticResultInt(int a, int b, char op);
 double getArithmeticResultDouble(float a, float b, char op);
-char* convertToCharArrayInt(int a); 
-char* convertToCharArrayDouble(double a); 
+// char* convertToCharArrayInt(int a); 
+// char* convertToCharArrayDouble(double a); 
 
 %}
 
@@ -261,6 +254,7 @@ sub_expression: sub_expression '>' sub_expression
 assign_expression: identifier assign_operation arithmetic_expression {
                                                                 identifierType = currentDataType; 
                                                                 printf("IDENTIFIER: %s ",$1); 
+                                                                
                                                                 printf("Assign operation: %s ", $2); 
                                                                 printf("Value: %s\n", $3);
 
@@ -287,9 +281,9 @@ parameter: sub_expression
 arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                                                                         //printf("Arithmetic +: %s + %s\n", $1, $3);
                                                                         if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '+')));
+                                                                            strcpy($$, to_string(getArithmeticResultInt(atoi($1), atoi($3), '+')).c_str());
                                                                         } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '+')));
+                                                                            strcpy($$, to_string(getArithmeticResultDouble((float)atof($1), (float)atof($3), '+')).c_str());
                                                                         }
                                                                         printf("result of addition : %s\n", $$);
                                                                         }
@@ -297,9 +291,9 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                      | arithmetic_expression '*' arithmetic_expression {
                                                                         //printf("Arithmetic *: %s * %s\n", $1, $3);
                                                                         if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '*')));
+                                                                            strcpy($$, to_string(getArithmeticResultInt(atoi($1), atoi($3), '*')).c_str());
                                                                         } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '*')));
+                                                                            strcpy($$, to_string(getArithmeticResultDouble((float)atof($1), (float)atof($3), '*')).c_str());
                                                                         }
                                                                         printf("result of multiplication : %s\n", $$);
                                                                         }
@@ -356,7 +350,7 @@ array_index:  primitive_constants
               | identifier
               ;
 
-assign_operation:  ASSIGN_OP        {currentOperation = "MOV";}
+assign_operation: ASSIGN_OP         {currentOperation = "MOV";}
                 | ADD_EQ            {currentOperation = "ADDEQ";}
                 | SUB_EQ            {currentOperation = "SUBEQ";}
                 | MULT_EQ           {currentOperation = "MULEQ";}
@@ -368,7 +362,7 @@ assign_operation:  ASSIGN_OP        {currentOperation = "MOV";}
 
 %%
 
-char* convertToCharArrayInt(int a) {
+/*char* convertToCharArrayInt(int a) {
     char* buf = malloc(32); 
     snprintf(buf, sizeof(buf), "%d", a);
     return buf;
@@ -377,7 +371,7 @@ char* convertToCharArrayDouble(double a) {
     char* buf = malloc(32); 
     snprintf(buf, sizeof(buf), "%f", a);
     return buf;
-}
+}*/
 
 int getArithmeticResultInt(int a, int b, char op) {
     int res = 0;

@@ -1,6 +1,4 @@
 %{
-// #include <iostream>
-// #include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include "y.tab.h"
@@ -10,10 +8,6 @@ char currentID[32];
 char currentValue[32]; //int,char,double,bool
 char currentOp[10];
 int globalScope = 0;
-
-extern FILE *yyin;
-extern char *yytext;
-extern int yylex(void);
 %}
 
 %{
@@ -50,6 +44,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 /*printf("Operator : %s\n", yytext); */
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
+                                strcpy(yylval.value, yytext);
                                 return  ADD_EQ;}
 "-="                         {
                                 /*printf("Operator : %s\n", yytext); */
@@ -93,7 +88,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "return"                    {/*printf("Reserved word: %s\n", yytext);*/ return  RETURN;}
 "if"                        {/*printf("Reserved word: %s\n", yytext);*/ return  IF;}
 "else"                      {/*printf("Reserved word: %s\n", yytext);*/ return  ELSE;}
-"/*printf"                    {/*printf("Reserved word: %s\n", yytext);*/ return  PRINT;}
+"printf"                    {/*printf("Reserved word: %s\n", yytext);*/ return  PRINT;}
 "scanf"                     {/*printf("Reserved word: %s\n", yytext);*/ return  SCAN;}
 "const"                     {/*printf("Reserved word: %s\n", yytext);*/ return CONST;}
 
