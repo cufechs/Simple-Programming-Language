@@ -87,7 +87,6 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 printf("Operator: %s\n", yytext);
                                 yylval.op = strdup(yytext);
                                 strcpy(currentOp, yylval.op);
-                                strcpy(yylval.value, yytext);
                                 return ASSIGN_OP;
                             }
 
@@ -134,31 +133,32 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 strcpy(currentID, yylval.idName);
                                 //strcpy(currentID, yytext);
                                 printf("[lexer]::IDENTIFIER: %s\n", currentID);
-                                strcpy(yylval.value, yytext);
-                                strcpy(yylval.node.idName, yytext);
-                                yylval.node.nodeType = NODE_ID;
-                                yylval.node.line_num = yylineno;
+                                //strcpy(yylval.value, yytext);
+                                //strcpy(yylval.node->idName, yytext);
+                                //yylval.node->nodeType = NODE_ID;
+                                //yylval.node->line_num = yylineno;
                                 return IDENTIFIER;}
 (\'.\')                      {
                                 printf("char value: %s\n", yytext);
                                 yylval.cVal = yytext[1];
                                 strcpy(currentValue, yytext);
+                                //yylval.node->cVal = yytext[1];
                                 return CHAR; }
 {INTEGER}                    {
-                                printf("integer value: %s\n", yytext);
-                                yylval.node.iVal = atoi(yytext);
-                                yylval.iVal = yytext;
-                                strcpy(currentValue, yytext);
-                                printf("[lexer]::INTEGER: %s\n\n", currentValue);
-                                strcpy(yylval.value, yytext);
-                                yylval.node.nodeType = NODE_CONST_VALUE;
-                                //printf("============================= %d\n", yylval.node.iVal);
-                                return INTEGER;}
+                                printf("integer valueee: %s\n", yytext);
+                                yylval.iVal = atoi(yytext);
+                                //yylval.node->iVal = atoi(yytext);
+                                //printf("integer valueee: %d\n", atoi(yytext));
+                                //strcpy(currentValue, yytext);
+                                //yylval.node->nodeType = NODE_CONST_VALUE;
+                                //printf("[lexer]:: integer value: %d", yylval.node->iVal );
+                                return INTEGER;
+                            }
 {REAL}                       {
                                 printf("double value: %s\n", yytext); 
-                                yylval.dVal = atof(yytext);
                                 strcpy(currentValue, yytext);
-                                strcpy(yylval.value, yytext);
+                                yylval.dVal = atof(yytext);
+                                //yylval.node->dVal = atof(yytext);
                                 return DOUBLE;}
 {WHITESPACE}                 ;
 

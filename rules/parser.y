@@ -32,8 +32,9 @@ int getArithmeticResultInt(int a, int b, char op);
 double getArithmeticResultDouble(float a, float b, char op);
 char* convertToCharArrayInt(int a); 
 char* convertToCharArrayDouble(double a); 
-
-
+Node *constantInt(int value);
+Node *constantDouble(double value);
+Node *createIdentifier(char* i);
 
 
 %}
@@ -41,12 +42,12 @@ char* convertToCharArrayDouble(double a);
 %union {
     int iVal;
     char cVal;
-    char* idName;
+    char *idName;
     char *sVal;
     double dVal;
     char* op;
     char value[32]; //general value for int, double, bool, char 
-    Node node;
+    Node *node;
 }
 
 /* Tokens from lexer */
@@ -103,15 +104,16 @@ char* convertToCharArrayDouble(double a);
 
 
 
-%token<value> INTEGER IDENTIFIER
-%token<value> DOUBLE
-%token<value> CHAR
-%token<value> BOOL
-%type<value> identifier array_indexing
-%token<value> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
-%type<value> assign_operation
-%type<value> arithmetic_expression primitive_constants 
-%token<value> '(' '-' ')'
+%token<idName> IDENTIFIER
+%token<iVal> INTEGER 
+%token<dVal> DOUBLE 
+%token<cVal> CHAR 
+%token<node> BOOL
+%type<node> identifier array_indexing
+%token<node> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
+%type<node> assign_operation
+%type<node> arithmetic_expression  primitive_constants
+%token<node> '(' '-' ')'
 
 // Order matters here:
 %right<op>  ASSIGN_OP
@@ -257,9 +259,9 @@ sub_expression: sub_expression '>' sub_expression
 
 assign_expression: identifier assign_operation arithmetic_expression {
                                                                 identifierType = currentDataType; 
-                                                                printf("IDENTIFIER: %s ",$1); 
+                                                                printf("IDENTIFIER: %s ",$1->idName); 
                                                                 printf("Assign operation: %s ", $2); 
-                                                                printf("Value: %s\n", $2);
+                                                                printf("Value: %s\n", $3);
                                                             }
                  | identifier assign_operation function_invoke
                  | identifier assign_operation unary_expression
@@ -280,45 +282,20 @@ parameter: sub_expression
   
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
 arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
-                                                                        //printf("Arithmetic +: %s + %s\n", $1, $3);
-                                                                        if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '+')));
-                                                                        } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '+')));
-                                                                        }
-                                                                        printf("result of addition : %s\n", $$);
-                                                                        }
-                     | arithmetic_expression '-' arithmetic_expression {
-                                                                        //printf("Arithmetic +: %s + %s\n", $1, $3);
-                                                                        if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '-')));
-                                                                        } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '-')));
-                                                                        }
-                                                                        printf("result of subtraction : %s\n", $$);
-                                                                        }
+                                                                        printf("Arithmetic :+: %d + %d \n", $1->iVal, $3->iVal);
+                                                                       }
+                     | arithmetic_expression '-' arithmetic_expression 
                      | arithmetic_expression '*' arithmetic_expression {
-                                                                        if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '*')));
-                                                                        } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '*')));
-                                                                        }
-                                                                        printf("result of multiplication : %s\n", $$);
-                                                                        }
-                     | arithmetic_expression '/' arithmetic_expression {
-                                                                        if (currentDataType == TYPE_INT) {
-                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '/')));
-                                                                        } else {
-                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '/')));
-                                                                        }
-                                                                        printf("result of division : %s\n", $$);
-                                                                        }
+                                                                        printf("Arithmetic :*: %d * %d \n", $1->iVal, $3->iVal);
+                                                                       }
+                     | arithmetic_expression '/' arithmetic_expression 
                      | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
                      | primitive_constants                              {
-                                                                        printf("Arithmetic : %s\n", $1);}
+                                                                        printf("Arithmetic : %d\n", $1->iVal);
+                                                                        }
                      ;
   
 unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
@@ -327,7 +304,7 @@ unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
                | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
                ;
 
-identifier: IDENTIFIER {printf("IDENTIFIER NAME: %s\n", $1);}
+identifier: IDENTIFIER {$$ = createIdentifier($1); printf("IDENTIFIER NAME: %s\n", $1);}
           ;
 
 
@@ -340,9 +317,9 @@ data_type: INT_TYPE         {currentDataType = TYPE_INT;}
          ;
 
    //values of integer, char, or double
-primitive_constants: INTEGER    
-               | CHAR           {printf("CHAR VALUE: %c\n", $1);}
-               | DOUBLE 
+primitive_constants: INTEGER    {$$ = constantInt($1); }
+               | CHAR           {printf("CHAR VALUE : %c\n", $1);}
+               | DOUBLE         {$$ = constantDouble($1);}
                | BOOL
                ;
 
@@ -438,6 +415,89 @@ double getArithmeticResultDouble(float a, float b, char op) {
     return res;
 }
 
+Node *constantInt(int value) {
+    Node *p;
+
+    /* allocate node */
+    if ((p = malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_CONST_VALUE;
+    p->iVal = value;
+    p->line_num = yylineno;
+    p->dataType = TYPE_INT;
+    return p;
+}
+
+Node *constantDouble(double value) {
+    Node *p;
+
+    /* allocate node */
+    if ((p = malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_CONST_VALUE;
+    p->dVal = value;
+    p->line_num = yylineno;
+    p->dataType = TYPE_DOUBLE;
+
+    return p;
+}
+
+Node *createIdentifier(char* i) {
+    Node *p;
+
+    /* allocate node */
+    if ((p = malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_ID;
+    //strcpy(p->idName, i);
+    p->idName = strdup(i);
+    p->line_num = yylineno;
+
+    return p;
+}
+
+Node *operation(char op, Node* operand1, Node* operand2) {
+    Node* p;
+
+    // check if operand1 and operand2 are iniialized
+    // check if operand1 and operand2 are of type NODE_ID or NODE_CONST_VALUE
+    if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_CONST_VALUE) {
+
+    } else if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_ID) {
+
+    } else if (operand1->nodeType == NODE_ID && operand2->nodeType == NODE_CONST_VALUE) {
+
+    }
+    switch(op) {
+        case '+':
+
+            break;
+        case '-':
+
+            break;
+        case '*':
+
+            break;
+        case '/':
+
+            break;
+        default:
+            printf("%c operation is not supported\n", op);
+    }
+
+    /* allocate node, extending op array */
+    // if ((p = malloc(sizeof(nodeType) + (nops-1) * sizeof(nodeType *))) == NULL)
+    //     yyerror("out of memory");
+
+
+    return p;
+}
 
 int main(int argc, char *argv[]) {
     printf("\n\n********* Simple Programming Language Compiler ********* \n\n");

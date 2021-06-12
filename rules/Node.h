@@ -20,7 +20,7 @@ typedef struct Node {
         int iVal; 
         double dVal; 
         char cVal; 
-        char idName[MAX_ID_LENGTH];
+        char *idName;
     };
     char* value;
     char* name;
