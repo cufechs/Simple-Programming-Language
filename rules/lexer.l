@@ -152,6 +152,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 printf("double value: %s\n", yytext); 
                                 yylval.dVal = atof(yytext);
                                 strcpy(currentValue, yytext);
+                                strcpy(yylval.value, yytext);
                                 return DOUBLE;}
 {WHITESPACE}                 ;
 

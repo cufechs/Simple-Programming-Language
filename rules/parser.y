@@ -24,9 +24,10 @@ enum DataType {
     TYPE_VOID,
     TYPE_BOOL
 };
-
-
-
+int getArithmeticResultInt(int a, int b, char op);
+double getArithmeticResultDouble(float a, float b, char op);
+char* convertToCharArrayInt(int a); 
+char* convertToCharArrayDouble(double a); 
 
 %}
 
@@ -267,9 +268,25 @@ parameter: sub_expression
 
   
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
-arithmetic_expression: arithmetic_expression '+' arithmetic_expression {printf("Arithmetic +: %s + %s\n", $1, $3);}
+arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
+                                                                        //printf("Arithmetic +: %s + %s\n", $1, $3);
+                                                                        if (currentDataType == TYPE_INT) {
+                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '+')));
+                                                                        } else {
+                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '+')));
+                                                                        }
+                                                                        printf("result of addition : %s\n", $$);
+                                                                        }
                      | arithmetic_expression '-' arithmetic_expression 
-                     | arithmetic_expression '*' arithmetic_expression {printf("Arithmetic *: %s * %s\n", $1, $3);}
+                     | arithmetic_expression '*' arithmetic_expression {
+                                                                        //printf("Arithmetic *: %s * %s\n", $1, $3);
+                                                                        if (currentDataType == TYPE_INT) {
+                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '*')));
+                                                                        } else {
+                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '*')));
+                                                                        }
+                                                                        printf("result of multiplication : %s\n", $$);
+                                                                        }
                      | arithmetic_expression '/' arithmetic_expression
                      | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
@@ -335,8 +352,20 @@ assign_operation:  ASSIGN_OP        {currentOperation = "MOV";}
 
 %%
 
-int getArithmeticResult(int a, int b, char op) {
+char* convertToCharArrayInt(int a) {
+    char* buf = malloc(32); 
+    snprintf(buf, sizeof(buf), "%d", a);
+    return buf;
+}
+char* convertToCharArrayDouble(double a) {
+    char* buf = malloc(32); 
+    snprintf(buf, sizeof(buf), "%f", a);
+    return buf;
+}
+
+int getArithmeticResultInt(int a, int b, char op) {
     int res = 0;
+    
     switch(op) {
         case '*':
             res = a * b;
@@ -350,6 +379,24 @@ int getArithmeticResult(int a, int b, char op) {
     }
     return res;
 } 
+
+double getArithmeticResultDouble(float a, float b, char op) {
+    double res = 0.0;
+    printf("a = %f   b = %f\n", a, b);
+    switch(op) {
+        case '*':
+            res = a * b;
+            break;
+        case '+':
+            res = a + b;
+            break;
+        default:
+            printf("No operation");
+            break;
+    }
+    printf("RES::: %f\n", res);
+    return res;
+}
 
 
 int main(int argc, char *argv[]) {
