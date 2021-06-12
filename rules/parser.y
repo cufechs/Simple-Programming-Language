@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include "Node.h"
+
 #include "lex.yy.c"
+
+
 /* prototypes */
 int yylex(void);
 int yyerror(char *s);
@@ -17,17 +21,20 @@ int regCount = 0;
 int regNum = 0;
 char currentIdentifier[32];
 
-enum DataType {
-    TYPE_INT,
-    TYPE_DOUBLE,
-    TYPE_CHAR,
-    TYPE_VOID,
-    TYPE_BOOL
-};
+// enum DataType {
+//     TYPE_INT,
+//     TYPE_DOUBLE,
+//     TYPE_CHAR,
+//     TYPE_VOID,
+//     TYPE_BOOL
+// };
 int getArithmeticResultInt(int a, int b, char op);
 double getArithmeticResultDouble(float a, float b, char op);
 char* convertToCharArrayInt(int a); 
 char* convertToCharArrayDouble(double a); 
+
+
+
 
 %}
 
@@ -39,6 +46,7 @@ char* convertToCharArrayDouble(double a);
     double dVal;
     char* op;
     char value[32]; //general value for int, double, bool, char 
+    Node node;
 }
 
 /* Tokens from lexer */
@@ -91,6 +99,9 @@ char* convertToCharArrayDouble(double a);
 // %type<op> assign_operation
 // %type<value> arithmetic_expression primitive_constants 
 // %token<value> '(' '-' ')'
+
+
+
 
 %token<value> INTEGER IDENTIFIER
 %token<value> DOUBLE
@@ -182,7 +193,7 @@ atomic_stmt: if_block
             | RETURN sub_expression SEMICOLON
             ;
 
-declaration: data_type declaration_list SEMICOLON  
+declaration: data_type declaration_list SEMICOLON 
             | CONST data_type declaration_list SEMICOLON   
             | declaration_list SEMICOLON 
             | unary_expression SEMICOLON 
@@ -277,9 +288,16 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                                                                         }
                                                                         printf("result of addition : %s\n", $$);
                                                                         }
-                     | arithmetic_expression '-' arithmetic_expression 
+                     | arithmetic_expression '-' arithmetic_expression {
+                                                                        //printf("Arithmetic +: %s + %s\n", $1, $3);
+                                                                        if (currentDataType == TYPE_INT) {
+                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '-')));
+                                                                        } else {
+                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '-')));
+                                                                        }
+                                                                        printf("result of subtraction : %s\n", $$);
+                                                                        }
                      | arithmetic_expression '*' arithmetic_expression {
-                                                                        //printf("Arithmetic *: %s * %s\n", $1, $3);
                                                                         if (currentDataType == TYPE_INT) {
                                                                             strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '*')));
                                                                         } else {
@@ -287,12 +305,20 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                                                                         }
                                                                         printf("result of multiplication : %s\n", $$);
                                                                         }
-                     | arithmetic_expression '/' arithmetic_expression
+                     | arithmetic_expression '/' arithmetic_expression {
+                                                                        if (currentDataType == TYPE_INT) {
+                                                                            strcpy($$, convertToCharArrayInt(getArithmeticResultInt(atoi($1), atoi($3), '/')));
+                                                                        } else {
+                                                                            strcpy($$, convertToCharArrayDouble(getArithmeticResultDouble((float)atof($1), (float)atof($3), '/')));
+                                                                        }
+                                                                        printf("result of division : %s\n", $$);
+                                                                        }
                      | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
-                     | primitive_constants                              {printf("Arithmetic : %s\n", $1);}
+                     | primitive_constants                              {
+                                                                        printf("Arithmetic : %s\n", $1);}
                      ;
   
 unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
@@ -314,7 +340,7 @@ data_type: INT_TYPE         {currentDataType = TYPE_INT;}
          ;
 
    //values of integer, char, or double
-primitive_constants: INTEGER 
+primitive_constants: INTEGER    
                | CHAR           {printf("CHAR VALUE: %c\n", $1);}
                | DOUBLE 
                | BOOL
@@ -367,11 +393,18 @@ int getArithmeticResultInt(int a, int b, char op) {
     int res = 0;
     
     switch(op) {
+        case '+':
+            res = a + b;
+            break;
         case '*':
             res = a * b;
             break;
-        case '+':
-            res = a + b;
+        case '-':
+            res = a - b;
+            break;
+        case '/':
+            if (b == 0) yyerror("Division by zero");
+            res = a / b;
             break;
         default:
             printf("No operation");
@@ -389,6 +422,13 @@ double getArithmeticResultDouble(float a, float b, char op) {
             break;
         case '+':
             res = a + b;
+            break;
+        case '-':
+            res = a - b;
+            break;
+        case '/':
+            if (b == 0.0) yyerror("Division by zero");
+            res = a / b;
             break;
         default:
             printf("No operation");

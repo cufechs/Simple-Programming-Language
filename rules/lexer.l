@@ -135,6 +135,9 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 //strcpy(currentID, yytext);
                                 printf("[lexer]::IDENTIFIER: %s\n", currentID);
                                 strcpy(yylval.value, yytext);
+                                strcpy(yylval.node.idName, yytext);
+                                yylval.node.nodeType = NODE_ID;
+                                yylval.node.line_num = yylineno;
                                 return IDENTIFIER;}
 (\'.\')                      {
                                 printf("char value: %s\n", yytext);
@@ -143,10 +146,13 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 return CHAR; }
 {INTEGER}                    {
                                 printf("integer value: %s\n", yytext);
+                                yylval.node.iVal = atoi(yytext);
                                 yylval.iVal = yytext;
                                 strcpy(currentValue, yytext);
                                 printf("[lexer]::INTEGER: %s\n\n", currentValue);
                                 strcpy(yylval.value, yytext);
+                                yylval.node.nodeType = NODE_CONST_VALUE;
+                                //printf("============================= %d\n", yylval.node.iVal);
                                 return INTEGER;}
 {REAL}                       {
                                 printf("double value: %s\n", yytext); 
