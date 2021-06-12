@@ -40,41 +40,15 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "!="                         {/*printf("Operator : %s\n", yytext);*/ return  NE;}
 "++"                         {/*printf("Operator : %s\n", yytext);*/ return  INC;}
 "--"                         {/*printf("Operator : %s\n", yytext);*/ return  DEC;}
-"+="                         {
-                                /*printf("Operator : %s\n", yytext); */
-                                yylval.op = strdup(yytext);
-                                strcpy(currentOp, yylval.op);
-                                strcpy(yylval.value, yytext);
-                                return  ADD_EQ;}
-"-="                         {
-                                /*printf("Operator : %s\n", yytext); */
-                                yylval.op = strdup(yytext);
-                                strcpy(currentOp, yylval.op);
-                                return  SUB_EQ;
-                            }
-"*="                         {
-                                /*printf("Operator : %s\n", yytext); */
-                                yylval.op = strdup(yytext);
-                                strcpy(currentOp, yylval.op);
-                                return  MULT_EQ;
-                            }
-"/="                         {
-                                /*printf("Operator : %s\n", yytext); */
-                                yylval.op = strdup(yytext);
-                                strcpy(currentOp, yylval.op);
-                                return  DIV_EQ;
-                            }
+"+="                         { yyOp(); return ADD_EQ; }
+"-="                         { yyOp(); return SUB_EQ; }
+"*="                         { yyOp(); return MULT_EQ; }
+"/="                         { yyOp(); return DIV_EQ; }
 "<<"                         {/*printf("Operator : %s\n", yytext);*/ return  SHL;}
 ">>"                         {/*printf("Operator : %s\n", yytext);*/ return  SHR;}
 "&&"                         {/*printf("Operator : %s\n", yytext);*/ return  LOGIC_AND;}
 "||"                         {/*printf("Operator : %s\n", yytext);*/ return  LOGIC_OR;}
-"="                         {
-                                /*printf("Operator: %s\n", yytext);*/
-                                yylval.op = strdup(yytext);
-                                strcpy(currentOp, yylval.op);
-                                strcpy(yylval.value, yytext);
-                                return ASSIGN_OP;
-                            }
+"="                          { yyOp(); return ASSIGN_OP; }
 
     /* Reserved Words */
 "for"                       {/*printf("Reserved word: %s\n", yytext);*/ return  FOR;}
@@ -159,6 +133,13 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 
 
 %%
+
+int yyOp(void){
+    /*printf("Operator: %s\n", yytext_t);*/
+    yylval.op = strdup(yytext);
+    strcpy(currentOp, yylval.op);
+    strcpy(yylval.value, yytext);
+}
 
 int yywrap(void) {
     return 1;
