@@ -21,6 +21,7 @@ int regCount = 0;
 int regNum = 0;
 char currentIdentifier[32];
 int isCurrentIdentifierInitialized = 0;
+int tmpRegCount = 0;
 // enum DataType {
 //     TYPE_INT,
 //     TYPE_DOUBLE,
@@ -302,15 +303,18 @@ parameter: sub_expression
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
 arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                                                                         $$ = evaluateExpression('+', $1, $3);
+                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
                                                                         printf("Arithmetic :+: %d + %d \n", $1->iVal, $3->iVal);
                                                                        }
                      | arithmetic_expression '-' arithmetic_expression {
                                                                         $$ = evaluateExpression('-', $1, $3);
+                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
                                                                         printf("Arithmetic :-: %d - %d \n", $1->iVal, $3->iVal);
                                                                         printf("[DEBUG] Final result :  %d\n", $$->iVal);
                                                                        }
                      | arithmetic_expression '*' arithmetic_expression {
                                                                         $$ = evaluateExpression('*', $1, $3);
+                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
                                                                         printf("Arithmetic :*: %d * %d \n", $1->iVal, $3->iVal);
                                                                        }
                      | arithmetic_expression '/' arithmetic_expression {
@@ -500,6 +504,8 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2) {
     if ((res = (Node*)malloc(sizeof(Node))) == NULL)
         yyerror("out of memory");
 
+    res->tmpName = "$t" + std::to_string(tmpRegCount);
+    tmpRegCount++;
     // assuming now that both are of the same type
     if (operand1->dataType == TYPE_INT) {
         int tmp_res = getArithmeticResultInt(operand1->iVal, operand2->iVal, op);

@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <string>
 
 #define MAX_ID_LENGTH 32
 
@@ -24,5 +25,7 @@ typedef struct Node {
     int line_num;
     enum DataType dataType;
     enum NodeType nodeType;
+
+    std::string tmpName;
 
 }Node;
