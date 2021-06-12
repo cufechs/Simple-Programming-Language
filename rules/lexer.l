@@ -6,8 +6,22 @@ int multiline_comment_start = 0;
 char currentType[32];
 char currentID[32];
 char currentValue[32]; //int,char,double,bool
+char currentOp[10];
 int globalScope = 0;
 
+
+
+// symbol table item
+struct SymbolTable {
+    char name[100];
+    char class[100];
+    char type[100];
+    char value[100];
+    int scope;
+    int line_num;
+    int length;
+    int params_count;
+}SymbolTable[1001];
 
 
 %}
@@ -45,20 +59,24 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "+="                         {
                                 printf("Operator : %s\n", yytext); 
                                 yylval.op = strdup(yytext);
+                                strcpy(currentOp, yylval.op);
                                 return  ADD_EQ;}
 "-="                         {
                                 printf("Operator : %s\n", yytext); 
                                 yylval.op = strdup(yytext);
+                                strcpy(currentOp, yylval.op);
                                 return  SUB_EQ;
                             }
 "*="                         {
                                 printf("Operator : %s\n", yytext); 
                                 yylval.op = strdup(yytext);
+                                strcpy(currentOp, yylval.op);
                                 return  MULT_EQ;
                             }
 "/="                         {
                                 printf("Operator : %s\n", yytext); 
                                 yylval.op = strdup(yytext);
+                                strcpy(currentOp, yylval.op);
                                 return  DIV_EQ;
                             }
 "<<"                         {printf("Operator : %s\n", yytext); return  SHL;}
@@ -68,6 +86,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "="                         {
                                 printf("Operator: %s\n", yytext);
                                 yylval.op = strdup(yytext);
+                                strcpy(currentOp, yylval.op);
+                                strcpy(yylval.value, yytext);
                                 return ASSIGN_OP;
                             }
 
@@ -87,7 +107,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "scanf"                     {printf("Reserved word: %s\n", yytext); return  SCAN;}
 "const"                     {printf("Reserved word: %s\n", yytext); return CONST;}
 
-";"                         {printf("Line ended***************\n"); return SEMICOLON;}
+";"                         {printf("DataType: %s\t Identifier: %s\t Operation: %s\t Value: %s\n", currentType, currentID, currentOp, currentValue); 
+                            return SEMICOLON;}
 ","                         {return COMMA;}
 
     /* DataTypes and likes */
@@ -101,7 +122,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
     /* Values of Types */
 "true"                       {
                                 printf("bool value: %s\n", yytext); 
-                                yylval.value = strdup(yytext);
+                                //yylval.value = strdup(yytext);
+                                strcpy(yylval.value, yytext);
                                 return BOOL;
                             }
 "false"                      {printf("bool value: %s\n", yytext); return BOOL;}
@@ -110,6 +132,9 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 printf("Identifier: %s \n", yytext); 
                                 yylval.idName = strdup(yytext);
                                 strcpy(currentID, yylval.idName);
+                                //strcpy(currentID, yytext);
+                                printf("[lexer]::IDENTIFIER: %s\n", currentID);
+                                strcpy(yylval.value, yytext);
                                 return IDENTIFIER;}
 (\'.\')                      {
                                 printf("char value: %s\n", yytext);
@@ -118,8 +143,10 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 return CHAR; }
 {INTEGER}                    {
                                 printf("integer value: %s\n", yytext);
-                                yylval.value = atoi(yytext);
+                                yylval.iVal = yytext;
                                 strcpy(currentValue, yytext);
+                                printf("[lexer]::INTEGER: %s\n\n", currentValue);
+                                strcpy(yylval.value, yytext);
                                 return INTEGER;}
 {REAL}                       {
                                 printf("double value: %s\n", yytext); 

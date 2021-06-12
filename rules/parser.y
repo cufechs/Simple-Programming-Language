@@ -7,7 +7,27 @@
 int yylex(void);
 int yyerror(char *s);
 
-//Here will be defination of sym table 😮 /* symbol table */ 
+
+char *currentOperation;
+int currentDataType;
+int valueType;
+int identifierType;
+int firstOperandType, secondOperandType;
+int regCount = 0;
+int regNum = 0;
+char currentIdentifier[32];
+
+enum DataType {
+    TYPE_INT,
+    TYPE_DOUBLE,
+    TYPE_CHAR,
+    TYPE_VOID,
+    TYPE_BOOL
+};
+
+
+
+
 %}
 
 %union {
@@ -17,7 +37,7 @@ int yyerror(char *s);
     char *sVal;
     double dVal;
     char* op;
-    char *value; //general value for int, double, bool, char 
+    char value[32]; //general value for int, double, bool, char 
 }
 
 /* Tokens from lexer */
@@ -61,16 +81,23 @@ int yyerror(char *s);
 %token LE
 
 // Values
-%token<value> INTEGER
+// %token<iVal> INTEGER
+// %token<dVal> DOUBLE
+// %token<cVal> CHAR
+// %token<value> BOOL
+// %type<idName> identifier array_indexing
+// %token<op> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
+// %type<op> assign_operation
+// %type<value> arithmetic_expression primitive_constants 
+// %token<value> '(' '-' ')'
+
+%token<value> INTEGER IDENTIFIER
 %token<value> DOUBLE
 %token<value> CHAR
 %token<value> BOOL
-// %token<idName> IDENTIFIER
-// %type<idName> lhs identifier array_indexing
-%token<idName> IDENTIFIER 
-%type<value> lhs identifier array_indexing
-%token<op> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
-%type<op> assign_operation
+%type<value> identifier array_indexing
+%token<value> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
+%type<value> assign_operation
 %type<value> arithmetic_expression primitive_constants 
 %token<value> '(' '-' ')'
 
@@ -134,20 +161,30 @@ stmts: stmts stmt
      | 
      ;
 
-stmt: scope_stmt | atomic_stmt
+stmt: scope_stmt 
+    | atomic_stmt
     ;
 
-atomic_stmt: if_block | while_block | for_block 
-    | switch_block 
-    | do_while_block SEMICOLON 
-    | case_block | declaration | print 
-    | scan | function_invoke SEMICOLON | RETURN SEMICOLON | CONTINUE SEMICOLON 
-    | BREAK SEMICOLON | RETURN sub_expression SEMICOLON
-    ;
+atomic_stmt: if_block 
+            | while_block 
+            | for_block 
+            | switch_block 
+            | do_while_block SEMICOLON 
+            | case_block 
+            | declaration 
+            | print 
+            | scan 
+            | function_invoke SEMICOLON 
+            | RETURN SEMICOLON 
+            | CONTINUE SEMICOLON 
+            | BREAK SEMICOLON 
+            | RETURN sub_expression SEMICOLON
+            ;
 
 declaration: data_type declaration_list SEMICOLON  
             | CONST data_type declaration_list SEMICOLON   
-            | declaration_list SEMICOLON | unary_expression SEMICOLON 
+            | declaration_list SEMICOLON 
+            | unary_expression SEMICOLON 
             ;
 
 declaration_list: declaration_list COMMA sub_declaration
@@ -206,10 +243,14 @@ sub_expression: sub_expression '>' sub_expression
                 | unary_expression 
                 ;
 
-assign_expression: lhs assign_operation arithmetic_expression {printf("IDENTIFIER: %s ",$1); printf("Assign operation: %s ", $2); printf("Value: %s\n", $2);}
-                 | lhs assign_operation array_indexing
-                 | lhs assign_operation function_invoke
-                 | lhs assign_operation unary_expression
+assign_expression: identifier assign_operation arithmetic_expression {
+                                                                identifierType = currentDataType; 
+                                                                printf("IDENTIFIER: %s ",$1); 
+                                                                printf("Assign operation: %s ", $2); 
+                                                                printf("Value: %s\n", $2);
+                                                            }
+                 | identifier assign_operation function_invoke
+                 | identifier assign_operation unary_expression
                  ;
 
 function_invoke: identifier '(' parameter_list ')'  
@@ -224,17 +265,17 @@ parameter: sub_expression
          | STRING
          ;
 
-
+  
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
-arithmetic_expression: arithmetic_expression '+' arithmetic_expression
-                     | arithmetic_expression '-' arithmetic_expression
-                     | arithmetic_expression '*' arithmetic_expression
+arithmetic_expression: arithmetic_expression '+' arithmetic_expression {printf("Arithmetic +: %s + %s\n", $1, $3);}
+                     | arithmetic_expression '-' arithmetic_expression 
+                     | arithmetic_expression '*' arithmetic_expression {printf("Arithmetic *: %s * %s\n", $1, $3);}
                      | arithmetic_expression '/' arithmetic_expression
                      | arithmetic_expression '%' arithmetic_expression 
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
-                     | primitive_constants
+                     | primitive_constants                              {printf("Arithmetic : %s\n", $1);}
                      ;
   
 unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
@@ -248,11 +289,11 @@ identifier: IDENTIFIER {printf("IDENTIFIER NAME: %s\n", $1);}
 
 
   
-data_type: INT_TYPE
-         | DOUBLE_TYPE
-         | BOOL_TYPE
-         | CHAR_TYPE
-         | VOID
+data_type: INT_TYPE         {currentDataType = TYPE_INT;}
+         | DOUBLE_TYPE      {currentDataType = TYPE_DOUBLE;}
+         | BOOL_TYPE        {currentDataType = TYPE_BOOL;}
+         | CHAR_TYPE        {currentDataType = TYPE_CHAR;}
+         | VOID             {currentDataType = TYPE_VOID;}
          ;
 
    //values of integer, char, or double
@@ -270,9 +311,9 @@ print: PRINT '(' STRING ')' SEMICOLON
      | PRINT '(' STRING COMMA primitive_constants ')' SEMICOLON
      ;
 
-lhs: identifier
-   | array_indexing
-   ;
+// lhs: IDENTIFIER 
+//    | array_indexing
+//    ;
 
 array_indexing: identifier '[' array_index ']'  {printf("array***********************\n");}
               | identifier '[' array_index ']' '[' array_index ']'
@@ -282,17 +323,33 @@ array_index:  primitive_constants
               | identifier
               ;
 
-assign_operation:  ASSIGN_OP
-                | ADD_EQ 
-                | SUB_EQ
-                | MULT_EQ
-                | DIV_EQ
+assign_operation:  ASSIGN_OP        {currentOperation = "MOV";}
+                | ADD_EQ            {currentOperation = "ADDEQ";}
+                | SUB_EQ            {currentOperation = "SUBEQ";}
+                | MULT_EQ           {currentOperation = "MULEQ";}
+                | DIV_EQ            {currentOperation = "DIVEQ";}
                 ;
 
 
 
 
 %%
+
+int getArithmeticResult(int a, int b, char op) {
+    int res = 0;
+    switch(op) {
+        case '*':
+            res = a * b;
+            break;
+        case '+':
+            res = a + b;
+            break;
+        default:
+            printf("No operation");
+            break;
+    }
+    return res;
+} 
 
 
 int main(int argc, char *argv[]) {
