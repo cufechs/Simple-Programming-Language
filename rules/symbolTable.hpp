@@ -6,24 +6,10 @@
 #include <cstring>
 #include <sstream>
 #include <stdio.h>
+#include "utils.h"
 using namespace std;
 
 #define MAX_SIZE 100 //size of hash table
-enum SymbolKind
-{
-    constant, //const int M
-    var,      //int x
-    func,     //void main
-    param,    //int par
-};
-enum DataType
-{
-    TYPE_INT = 10,
-    TYPE_DOUBLE,
-    TYPE_CHAR,
-    TYPE_VOID,
-    TYPE_BOOL
-};
 
 struct SymbolTableEntry
 {
@@ -39,7 +25,7 @@ struct SymbolTableEntry
 };
 
 ///Symbol table -> hashtable
-SymbolTableEntry *symbolTable[MAX_SIZE + 1]; //0-MAX-1
+SymbolTableEntry *symbolTable[MAX_SIZE]; //0-MAX-1
 //symbolTable[MAX_SIZE] -> temp
 
 //hash function
