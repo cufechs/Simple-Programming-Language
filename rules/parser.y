@@ -1,4 +1,6 @@
 %{
+// #include <iostream>
+// #include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -99,6 +101,9 @@ char* convertToCharArrayDouble(double a);
 %type<value> identifier array_indexing
 %token<value> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
 %type<value> assign_operation
+%type<value> unary_expression
+%type<value> sub_expression
+%type<value> expression
 %type<value> arithmetic_expression primitive_constants 
 %token<value> '(' '-' ')'
 
@@ -155,7 +160,7 @@ arguments: arguments COMMA argument
 argument: data_type identifier
         ;
 
-scope_stmt: '{' stmts '}'
+scope_stmt: {printf("start of scope at line %d \n",yylineno);} '{' stmts '}' {printf("end of scope at line %d \n",yylineno);}
           ;
         
 stmts: stmts stmt  
@@ -197,12 +202,24 @@ sub_declaration: assign_expression
                 | array_indexing
                 ;
 
-if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE | IF '(' expression ')' stmt ELSE stmt 
+if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE    
+        | IF '(' expression ')' stmt ELSE stmt             
         ;
 
-for_block: FOR '(' expression_statement expression_statement ')' stmt 
-         | FOR '(' expression_statement expression_statement expression_statement ')' stmt 
+for_block: FOR '(' for_init for_middle for_end ')' stmt 
          ;
+
+for_init: declaration 
+        | SEMICOLON
+        ;
+
+for_middle: expression SEMICOLON 
+            | SEMICOLON
+            ;
+
+for_end: expression
+        | /*epsilon*/
+        ;
 
 while_block: WHILE '(' expression ')' stmt 
            ;        
@@ -217,9 +234,6 @@ case_block: CASE expression ':' stmt   {printf("case\n");}
           | DEFAULT ':' stmt            {printf("default case\n");}
           ;
 
-expression_statement: expression SEMICOLON
-          | SEMICOLON
-          ;
 
 expression: expression COMMA sub_expression
           | sub_expression
@@ -227,7 +241,7 @@ expression: expression COMMA sub_expression
 
 sub_expression: sub_expression '>' sub_expression
                 | sub_expression '<' sub_expression
-                | sub_expression EQ sub_expression
+                | sub_expression EQ sub_expression          {printf("Compare %s == %s \n",$1,$3);}
                 | sub_expression NE sub_expression
                 | sub_expression LE sub_expression
                 | sub_expression GE sub_expression
@@ -248,14 +262,16 @@ assign_expression: identifier assign_operation arithmetic_expression {
                                                                 identifierType = currentDataType; 
                                                                 printf("IDENTIFIER: %s ",$1); 
                                                                 printf("Assign operation: %s ", $2); 
-                                                                printf("Value: %s\n", $2);
+                                                                printf("Value: %s\n", $3);
+
+                                                                //insert();
                                                             }
                  | identifier assign_operation function_invoke
                  | identifier assign_operation unary_expression
                  ;
 
-function_invoke: identifier '(' parameter_list ')'  
-               | identifier '(' ')'  
+function_invoke: identifier '(' parameter_list ')'  {printf("Function invoke\n");}
+               | identifier '(' ')'                 {printf("Function invoke\n");}
                ;
 
 parameter_list: parameter_list COMMA parameter
@@ -292,16 +308,16 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                      | '(' arithmetic_expression ')'
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
-                     | primitive_constants                              {printf("Arithmetic : %s\n", $1);}
+                     | primitive_constants                              {/*printf("Arithmetic : %s\n", $1);*/}
                      ;
   
-unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
-               | IDENTIFIER DEC   {printf("POST DECREMENT\n");}
-               | INC IDENTIFIER   {printf("PRE INCREMENT\n");}
-               | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
+unary_expression: IDENTIFIER INC  //{printf("POST INCREMENT\n");}
+               | IDENTIFIER DEC   //{printf("POST DECREMENT\n");}
+               | INC IDENTIFIER   //{printf("PRE INCREMENT\n");}
+               | DEC IDENTIFIER   //{printf("PRE DECREMENT\n");}
                ;
 
-identifier: IDENTIFIER {printf("IDENTIFIER NAME: %s\n", $1);}
+identifier: IDENTIFIER {/*printf("IDENTIFIER NAME: %s\n", $1);*/}
           ;
 
 
@@ -314,7 +330,7 @@ data_type: INT_TYPE         {currentDataType = TYPE_INT;}
          ;
 
    //values of integer, char, or double
-primitive_constants: INTEGER 
+primitive_constants: INTEGER    
                | CHAR           {printf("CHAR VALUE: %c\n", $1);}
                | DOUBLE 
                | BOOL
@@ -332,7 +348,7 @@ print: PRINT '(' STRING ')' SEMICOLON
 //    | array_indexing
 //    ;
 
-array_indexing: identifier '[' array_index ']'  {printf("array***********************\n");}
+array_indexing: identifier '[' array_index ']' 
               | identifier '[' array_index ']' '[' array_index ']'
               ;
 
