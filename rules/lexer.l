@@ -43,8 +43,8 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "<="                         {printf("Operator : %s\n", yytext); return  LE;}
 "=="                         {printf("Operator : %s\n", yytext); return  EQ;}
 "!="                         {printf("Operator : %s\n", yytext); return  NE;}
-"++"                         {printf("Operator : %s\n", yytext); return  INC;}
-"--"                         {printf("Operator : %s\n", yytext); return  DEC;}
+"++"                         { return  INC;}
+"--"                         { return  DEC;}
 "+="                         {
                                 
                                 yylval.op = strdup(yytext);
@@ -99,8 +99,10 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
 "scanf"                     {printf("Reserved word: %s\n", yytext); return  SCAN;}
 "const"                     {printf("Reserved word: %s\n", yytext); return CONST;}
 
-";"                         {printf("DataType: %s\t Identifier: %s\t Operation: %s\t Value: %s\n", currentType, currentID, currentOp, currentValue); 
-                            return SEMICOLON;}
+";"                         {
+                            //printf("DataType: %s\t Identifier: %s\t Operation: %s\t Value: %s\n", currentType, currentID, currentOp, currentValue); 
+                            return SEMICOLON;
+                            }
 ","                         {return COMMA;}
 
     /* DataTypes and likes */
@@ -138,7 +140,7 @@ REAL                ({INTEGER}{EXP}|{DOUBLE}{EXP}?)
                                 //yylval.node->cVal = yytext[1];
                                 return CHAR; }
 {INTEGER}                    {
-                                printf("integer valueee: %s\n", yytext);
+                                //printf("integer valueee: %s\n", yytext);
                                 yylval.iVal = atoi(yytext);
                                 //yylval.node->iVal = atoi(yytext);
                                 //printf("integer valueee: %d\n", atoi(yytext));

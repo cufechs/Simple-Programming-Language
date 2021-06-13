@@ -8,7 +8,14 @@ enum NodeType {
     NODE_ID, //identifier 
     NODE_CONST_VALUE, //int, double, number
     NODE_OP, //operation
+    NODE_POST_PRE, //preincrment/decrement and postincrement/decrement
+    NODE_CONDITIONAL, // if, else if, else
+    NODE_EXPRESSION
 };
+
+typedef struct ExpressionNode {
+
+}ExpressionNode;
 
 typedef struct Node {
     // values
@@ -27,5 +34,7 @@ typedef struct Node {
     enum NodeType nodeType;
 
     std::string tmpName;
+    std::string assemblyCode;
+    std::string post_pre_op;
 
 }Node;

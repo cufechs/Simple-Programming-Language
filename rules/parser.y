@@ -16,12 +16,14 @@ char *currentOperation;
 int currentDataType;
 int valueType;
 int identifierType;
-int firstOperandType, secondOperandType;
+int firstOperandType;
+int secondOperandType;
 int regCount = 0;
 int regNum = 0;
 char currentIdentifier[32];
 int isCurrentIdentifierInitialized = 0;
 int tmpRegCount = 0;
+bool isConditionalCode = false;
 // enum DataType {
 //     TYPE_INT,
 //     TYPE_DOUBLE,
@@ -37,6 +39,8 @@ Node *constantInt(int value);
 Node *constantDouble(double value);
 Node *createIdentifier(char* i);
 Node* evaluateExpression(char op, Node* operand1, Node* operand2);
+Node* createUnaryExpression(char* idName, char* op);
+
 
 %}
 
@@ -114,8 +118,8 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %type<node> identifier array_indexing
 %token<node> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
 %type<node> assign_operation
-%type<node> arithmetic_expression  primitive_constants
-%token<node> '(' '-' ')' 
+%type<node> arithmetic_expression primitive_constants sub_expression unary_expression
+%token<node> '(' '-' ')' '!'
 
 // Order matters here:
 %right<op>  ASSIGN_OP
@@ -145,14 +149,15 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 
 %%
 
-
+s: start 
+    ;
 
 start: start line_stmt {printf("\n"); }
-     | line_stmt  {printf("\n"); }
+     | line_stmt  {printf("\n");}
      ;
     
-line_stmt: function 
-         | declaration 
+line_stmt: function  {printf("**********************************************Code ended\n");}
+         | declaration {printf("**********************************************Code ended\n");}
          ;
 
 function: data_type IDENTIFIER '(' argument_list ')' scope_stmt
@@ -208,26 +213,13 @@ declaration_list: declaration_list COMMA sub_declaration
                 | sub_declaration 
                 ;
 
-sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
+sub_declaration: assign_expression 
                 | identifier
                 | array_indexing
                 ;
 
 
-// declaration: data_type declaration_list SEMICOLON  {printf("variable is initialized, current data type: %s, \n", currentType);}
-//             | CONST data_type declaration_list SEMICOLON   
-//             | declaration_list SEMICOLON 
-//             | unary_expression SEMICOLON 
-//             ;
 
-// declaration_list: declaration_list COMMA sub_declaration
-//                 | sub_declaration 
-//                 ;
-
-// sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
-//                 | identifier
-//                 | array_indexing
-//                 ;
 
 if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE {printf("IF Block prec\n");}
         | IF '(' expression ')' stmt ELSE stmt {printf("IF Block\n");}
@@ -258,7 +250,7 @@ expression: expression COMMA sub_expression
           | sub_expression
           ;
 
-sub_expression: sub_expression '>' sub_expression
+sub_expression: sub_expression '>' sub_expression   {printf("Greater than expression left: %s   right: %d\n",$1->idName, $3->iVal);}
                 | sub_expression '<' sub_expression
                 | sub_expression EQ sub_expression
                 | sub_expression NE sub_expression
@@ -272,16 +264,16 @@ sub_expression: sub_expression '>' sub_expression
                 | sub_expression LOGIC_AND sub_expression
                 | sub_expression LOGIC_OR sub_expression
                 | '!' sub_expression
+                //| assign_expression
                 | arithmetic_expression
-                | assign_expression
                 | unary_expression 
                 ;
 
 assign_expression: identifier assign_operation arithmetic_expression {
                                                                 identifierType = currentDataType; 
-                                                                printf("IDENTIFIER: %s ",$1->idName); 
-                                                                printf("Assign operation: %s ", $2); 
-                                                                printf("Value: %s\n", $3);
+                                                                //printf("IDENTIFIER: %s ",$1->idName); 
+                                                                //printf("Assign operation: %s ", $2); 
+                                                                //printf("Value: %s\n", $3);
                                                             }
                  | identifier assign_operation function_invoke
                  | identifier assign_operation unary_expression
@@ -326,14 +318,14 @@ arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
                      | '-' arithmetic_expression %prec UMINUS
                      | identifier 
                      | primitive_constants                              {
-                                                                        printf("Arithmetic : %d\n", $1->iVal);
+                                                                        //printf("Arithmetic : %d\n", $1->iVal);
                                                                         }
                      ;
   
-unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
-               | IDENTIFIER DEC   {printf("POST DECREMENT\n");}
-               | INC IDENTIFIER   {printf("PRE INCREMENT\n");}
-               | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
+unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n"); currentOperation="INC"; $$ = createUnaryExpression(currentID, "post++");}
+               | IDENTIFIER DEC   {printf("POST DECREMENT\n"); currentOperation="DEC"; $$ = createUnaryExpression(currentID, "post--");}
+               | INC IDENTIFIER   {printf("PRE INCREMENT\n"); currentOperation="INC"; $$ = createUnaryExpression(currentID, "pre++");}
+               | DEC IDENTIFIER   {printf("PRE DECREMENT\n"); currentOperation="DEC"; $$ = createUnaryExpression(currentID, "pre--");}
                ;
 
 identifier: IDENTIFIER {$$ = createIdentifier($1); printf("IDENTIFIER NAME: %s\n", $1);}
@@ -363,11 +355,7 @@ print: PRINT '(' STRING ')' SEMICOLON
      | PRINT '(' STRING COMMA primitive_constants ')' SEMICOLON
      ;
 
-// lhs: IDENTIFIER 
-//    | array_indexing
-//    ;
-
-array_indexing: identifier '[' array_index ']'  {printf("array***********************\n");}
+array_indexing: identifier '[' array_index ']'  
               | identifier '[' array_index ']' '[' array_index ']'
               ;
 
@@ -490,6 +478,8 @@ Node *createIdentifier(char* i) {
     //strcpy(p->idName, i);
     p->idName = strdup(i);
     p->line_num = yylineno;
+    
+    
 
     return p;
 }
@@ -522,6 +512,65 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2) {
     }
 
     return res;
+}
+
+Node* createUnaryExpression(char* idName, char* op) {
+    Node* res;
+
+    if ((res = (Node*)malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    if (strcmp(currentType, "int") != 0 && strcmp(currentType, "double") != 0) {
+        printf("CurrentType: %s\n", currentType);
+        yyerror("Type mismatch. Cannot increment a non numeric token");
+    }
+
+    // TODO: check if identifier with name currentID or idName is initialized or not
+
+    res->idName = strdup(idName);
+    res->nodeType = NODE_POST_PRE;
+    res->post_pre_op = std::string(op);
+
+
+    return res;
+
+}
+
+Node* createConditionalExpressionNode(char *op, Node* operand1, Node* operand2) {
+    Node* res;
+    if ((res = (Node*)malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    
+    if (operand1->nodeType == NODE_ID && operand2->nodeType == NODE_CONST_VALUE) {
+
+    } else if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_ID) {
+
+    } else if (operand1->nodeType == NODE_ID && operand2->nodeType == NODE_ID) {
+
+    } else if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_CONST_VALUE) {
+
+    } else {
+        yyerror("Type mismatch in conditional statement");
+    }
+
+    // Line: if (src1 operator src2)
+    // operator: > < >= ,... 
+    // src1, src2 
+    // quad (src1, src2, operator)
+
+    // start of if block
+    // ... code
+    // ... code
+    // end of if block
+    // quad(..., globalScope)
+
+    /*
+
+
+    */
+
+
 }
 
 Node *operation(char op, Node* operand1, Node* operand2) {
