@@ -40,6 +40,8 @@ Node *constantDouble(double value);
 Node *createIdentifier(char* i);
 Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 Node* createUnaryExpression(char* idName, char* op);
+Node *opr(char* oper, int nops, ...); 
+int constructAST(Node *p);
 
 
 %}
@@ -571,6 +573,115 @@ Node* createConditionalExpressionNode(char *op, Node* operand1, Node* operand2) 
     */
 
 
+}
+
+
+Node *opr(char* oper, int nops, ...) {
+    va_list ap;
+    Node *p;
+    int i;
+
+    /* allocate node, extending op array */
+    if ((p = (Node*)malloc(sizeof(Node) + (nops-1) * sizeof(Node *))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_OP;
+    //p->opr.oper = std::string(oper);
+    //std::string s(oper);
+    strcpy(p->opr.oper, oper);
+    //p->opr.oper = s;
+    p->opr.nops = nops;
+    va_start(ap, nops);
+    for (i = 0; i < nops; i++)
+        p->opr.op[i] = va_arg(ap, Node*);
+    va_end(ap);
+    return p;
+}
+
+static int lbl;
+
+int constructAST(Node *p) {
+    int lbl1, lbl2;
+
+    if (!p) return 0;
+    switch(p->nodeType) {
+    case NODE_CONST_VALUE:       
+        if (p->dataType == TYPE_INT) {
+            printf("\tpush\t%d\n", p->iVal); 
+        } else {
+           printf("\tpush\t%.5f\n", p->dVal);  
+        }
+        break;
+    case NODE_ID:        
+        printf("\tpush\t%c\n", p->idName + 'a'); 
+        break;
+    case NODE_OP:
+        if (strcmp(p->opr.oper, "while") == 0) {
+            printf("L%03d:\n", lbl1 = lbl++);
+            constructAST(p->opr.op[0]);
+            printf("\tjz\tL%03d\n", lbl2 = lbl++);
+            constructAST(p->opr.op[1]);
+            printf("\tjmp\tL%03d\n", lbl1);
+            printf("L%03d:\n", lbl2);
+        } else if (strcmp(p->opr.oper, "if") == 0) {
+            constructAST(p->opr.op[0]);
+            if (p->opr.nops > 2) {
+                /* if else */
+                printf("\tjz\tL%03d\n", lbl1 = lbl++);
+                constructAST(p->opr.op[1]);
+                printf("\tjmp\tL%03d\n", lbl2 = lbl++);
+                printf("L%03d:\n", lbl1);
+                constructAST(p->opr.op[2]);
+                printf("L%03d:\n", lbl2);
+            } else {
+                /* if */
+                printf("\tjz\tL%03d\n", lbl1 = lbl++);
+                constructAST(p->opr.op[1]);
+                printf("L%03d:\n", lbl1);
+            }
+        } else if (strcmp(p->opr.oper, "print") == 0) {
+            constructAST(p->opr.op[0]);
+            printf("\tprint\n");
+        } else if (strcmp(p->opr.oper, "=") == 0) {
+            constructAST(p->opr.op[1]);
+            if (p->dataType == TYPE_INT) {
+                printf("\tpop\t%c\n", p->opr.op[0]->iVal + 'a');
+            } else {
+                printf("\tpop\t%c\n", p->opr.op[0]->dVal+ 'a');
+            }
+        } else if (strcmp(p->opr.oper, "neg") == 0) {
+            constructAST(p->opr.op[0]);
+            printf("\tneg\n");
+        } else {
+            constructAST(p->opr.op[0]);
+            constructAST(p->opr.op[1]);
+            if (strcmp(p->opr.oper, "+") == 0) {
+                printf("\tadd\n");
+            } else if (strcmp(p->opr.oper, "-") == 0) {
+                printf("\tsub\n");
+            } else if (strcmp(p->opr.oper, "*") == 0) {
+                printf("\tmul\n");
+            } else if (strcmp(p->opr.oper, "/") == 0) {
+                printf("\tdiv\n");
+            } else if (strcmp(p->opr.oper, "<") == 0) {
+                printf("\tcompLT\n");
+            } else if (strcmp(p->opr.oper, ">") == 0) {
+                printf("\tcompGT\n");
+            } else if (strcmp(p->opr.oper, ">=") == 0) {
+                printf("\tcompGE\n");
+            } else if (strcmp(p->opr.oper, "<=") == 0) {
+                printf("\tcompLE\n");
+            } else if (strcmp(p->opr.oper, "!=") == 0) {
+                printf("\tcompNE\n");
+            } else if (strcmp(p->opr.oper, "==") == 0) {
+                printf("\tcompEQ\n");
+            }
+
+        }
+        
+    }
+    return 0;
 }
 
 Node *operation(char op, Node* operand1, Node* operand2) {

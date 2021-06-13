@@ -17,6 +17,13 @@ typedef struct ExpressionNode {
 
 }ExpressionNode;
 
+/* operators */
+typedef struct {
+    char oper[8];                   /* operator */
+    int nops;                   /* number of operands */
+    struct Node *op[1];	/* operands, extended at runtime */
+} oprNodeType;
+
 typedef struct Node {
     // values
     union {
@@ -24,6 +31,7 @@ typedef struct Node {
         double dVal; 
         char cVal; 
         char *idName;
+        oprNodeType opr;  
     };
     char* value;
     char* name;
@@ -37,4 +45,4 @@ typedef struct Node {
     std::string assemblyCode;
     std::string post_pre_op;
 
-}Node;
+} Node;
