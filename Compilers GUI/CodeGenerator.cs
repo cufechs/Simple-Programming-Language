@@ -122,6 +122,7 @@ namespace Compilers_GUI
                                     }
                                     else
                                     {
+                                        RegisterDescriptor[RegCounter] = Quad.Result;
                                         SW.WriteLine("MOV " + "R" + RegCounter.ToString() + ", " + Src1M);
                                         SW.WriteLine("STR " + Quad.Result + ", " + "R" + RegCounter.ToString());
                                     }
