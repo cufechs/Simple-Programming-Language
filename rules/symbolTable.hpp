@@ -2,12 +2,15 @@
 #define __SYMBOLTABLE_HPP_
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <cstring>
 #include <sstream>
 #include <stdio.h>
 #include "utils.h"
 using namespace std;
+
+ofstream myfile3;
 
 #define MAX_SIZE 100 //size of hash table
 
@@ -58,7 +61,7 @@ DataType getDataTypeInsert(string dt)
 }
 
 //insert new entry in symbol table
-bool insert(string varName, SymbolKind kind, char *dt, bool initialized)
+bool insert(string varName, SymbolKind kind, char *dt, bool initialized, string value = "")
 {
     DataType dataType = getDataTypeInsert(dt);
 
@@ -202,11 +205,20 @@ string printType(DataType type)
 string printSymbolTable()
 {
     stringstream ss;
+    myfile3.open("symbols.txt");
     for (int i = 0; i < MAX_SIZE; i++)
     {
         SymbolTableEntry *temp = symbolTable[i];
-        while (temp != NULL)
+        while (temp != NULL && temp->name != "main")
         {
+
+            myfile3 << "Name: " << temp->name;
+            if (temp->value != "")
+                myfile3 << " - Value: " << temp->value;
+            myfile3 << printKind(temp->kind);
+            myfile3 << printType(temp->dataType);
+            myfile3 << " - Initialized: " << temp->initialized << "\n";
+            ///
             ss << "Name: " << temp->name;
             if (temp->value != "")
                 ss << " - Value: " << temp->value;

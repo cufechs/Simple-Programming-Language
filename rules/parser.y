@@ -28,6 +28,7 @@ int caseCount =0;
 int forCount =0;
 int whileCount =0;
 int doWhileCount =0;
+int funcCount =0;
 
 bool fromElse =false;
 int forEnd =0;
@@ -35,6 +36,7 @@ char *currentOperation = 0;
 char *currentDeclarationID = 0;
 int currentDataType;
 int valueType;
+int currFuncType =0;
 int identifierType,lastIdentifierType=-1;
 int firstOperandType, secondOperandType;
 int regCount = 0;
@@ -149,9 +151,7 @@ void checkVarSemanticError(char *e);
 %type<node> function_invoke
 %type<node> primitive_constants
 %type<node> declaration
-%type<node> parameter_list_dec
 %type<node> parameter_list
-%type<node> parameter_dec
 %type<node> parameter
 %type<node> sub_declaration
 %type<node> expression
@@ -198,8 +198,28 @@ line_stmt: function
          | declaration 
          ;
 
-function: data_type IDENTIFIER LEFT_ROUND argument_list RIGHT_ROUND scope_stmt
-        | data_type IDENTIFIER LEFT_ROUND argument_list RIGHT_ROUND SEMICOLON {printf("function definition\n");}
+function_init: data_type IDENTIFIER             {if(!insert($2,func,currentType,true,std::to_string(funcCount)))
+                                                    yyerror("Semantic Error: Already assigned..");
+                                                    else printf("&&&&&&&&&&&&&&&&&&&&&&&&&& inserted function\n");
+
+                                                    currFuncType = getDataTypeInsert(currentType);
+                                                    std::string s2="LFNS";
+                                                    s2 += std::to_string(funcCount);
+                                                    char* tp2 = new char[10];
+                                                    strcpy(tp2 ,s2.c_str());
+                                                    insertQuad(NULL,NULL,"LABEL",tp2,forEnd);   
+                                                }
+        ;
+
+function: function_init LEFT_ROUND argument_list RIGHT_ROUND scope_stmt {
+                                                                            std::string s2="LFNE";
+                                                                            s2 += std::to_string(funcCount);
+                                                                            char* tp2 = new char[10];
+                                                                            strcpy(tp2 ,s2.c_str());
+                                                                            insertQuad(NULL,NULL,"JMP",tp2,forEnd);
+                                                                            funcCount++; 
+                                                                        }
+        | function_init LEFT_ROUND argument_list RIGHT_ROUND SEMICOLON {printf("function definition\n");}
         ;
 
 argument_list: arguments
@@ -207,10 +227,12 @@ argument_list: arguments
              ;
 
 arguments: arguments COMMA argument 
-         | argument
+         | argument                                              
          ;
 
-argument: data_type identifier
+argument: data_type identifier              {if(!insert($2->tmpName,param,currentType,false))
+                                                yyerror("Semantic Error: Already assigned..");
+                                            }
         ;
 
 scope_stmt: LEFT_BRACE {globalScope++; printf("[DEBUG] open scope at line %d\n", yylineno);} stmts '}' {printf("[DEBUG] close scope at line %d\n", yylineno);globalScope--;}
@@ -275,12 +297,16 @@ atomic_stmt: if_block                           {
             | declaration 
             | print 
             | scan 
-            | function_invoke  
-            | function_declaration  
+            | function_invoke   
             | RETURN SEMICOLON 
             | CONTINUE SEMICOLON 
             | BREAK SEMICOLON                               {printf("break:::\n");}
-            | RETURN sub_expression SEMICOLON
+            | RETURN sub_expression SEMICOLON               {
+                                                                if(currFuncType!=TYPE_VOID){
+                                                                //printf("return  %s  :::\n",$2->tmpName);
+                                                                    insertQuad(NULL,NULL,"push",$2->tmpName,forEnd);
+                                                                }
+                                                            }
             ;
 
 declaration: data_type assign_expression SEMICOLON  %prec DECLAR        {
@@ -499,14 +525,15 @@ assign_expression: identifier assign_operation arithmetic_expression {
                                                                         
                                                                     }
                  | identifier assign_operation function_invoke      {
-                                                                        // currentDeclarationID=$1->idName;
-                                                                        // identifierType = currentDataType;
+                                                                        currentDeclarationID=$1->idName;
+                                                                        identifierType = currentDataType;
+                                                                        printf("%s\n",currentDeclarationID);
                                                                         // insertQuad($3->tmpName,NULL,"=",currentDeclarationID,forEnd);
                                                                         // if ($1->dataType!= $3->dataType) {
                                                                         //     yyerror("Type mismatch");
                                                                         // }
                                                                         
-                                                                    }
+                                                                     }
                  | identifier assign_operation unary_expression      {
                                                                         currentDeclarationID=$1->idName;
                                                                         identifierType = currentDataType;
@@ -519,26 +546,20 @@ assign_expression: identifier assign_operation arithmetic_expression {
 
                  ;
 ////FUNCTIONS
-
-function_declaration: data_type identifier LEFT_ROUND parameter_list_dec RIGHT_ROUND stmt                {
-                                                                                                                    //printf("id: %s\n",currentDeclarationID);
-                                                                                                                    if(!insert(currentDeclarationID,var,currentType,true))
-                                                                                                                        yyerror("Semantic Error: Already assigned..");
-                                                                                                                    // else 
-                                                                                                                    //     insertQuad();
-                                                                                                                }
-;
-parameter_list_dec: parameter_list_dec COMMA parameter_dec
-              | parameter_dec                       {
-                                                        printf("param =%s \n",$1->tmpName);
-                                                    }
-              ;
-
-parameter_dec: data_type identifier             {$$ = createIdentifier($2->tmpName);}
-            | /* */
-         ;
-
-function_invoke: identifier LEFT_ROUND parameter_list RIGHT_ROUND SEMICOLON 
+function_invoke: identifier LEFT_ROUND parameter_list RIGHT_ROUND SEMICOLON         {
+                                                                                        std::string s2="LFNE";
+                                                                                        SymbolTableEntry *entry = getEntry($1->tmpName);
+                                                                                        if(entry!=NULL){
+                                                                                            s2 += entry->value;
+                                                                                        }
+                                                                                        char* tp2 = new char[10];
+                                                                                        strcpy(tp2 ,s2.c_str());
+                                                                                        insertQuad(NULL,NULL,"JMP",tp2,forEnd);
+                                                                                        Node* ptr = new Node();
+                                                                                        ptr->initialized = entry->initialized;
+                                                                                        ptr->tmpName = $1->tmpName;
+                                                                                        $$ = ptr;//evaluateExpression("+", $1, $3);
+                                                                                    }
                | identifier LEFT_ROUND RIGHT_ROUND SEMICOLON
                ;
 
@@ -839,24 +860,6 @@ Node *constantChar(char value) {
     return p;
 }
 
-// Node *constantString(char* value) {
-//     Node *p;
-
-//     /* allocate node */
-//     if ((p = (Node*)malloc(sizeof(Node))) == NULL)
-//         yyerror("out of memory");
-
-//     /* copy information */
-//     p->nodeType = NODE_CONST_VALUE;
-//     p->sVal = new char[10];
-//     strcpy(p->sVal ,to_string(value).c_str());
-//     p->line_num = yylineno;
-//     p->dataType = TYPE_STRING;
-//     p->tmpName = new char[10];
-//     strcpy(p->tmpName ,value);
-//     return p;
-// }
-
 Node *constantBool(bool value) {
     Node *p;
 
@@ -979,7 +982,8 @@ void checkVarSemanticError(char *e){
     SymbolTableEntry *entry = getEntry(e);
     if(entry==NULL)
         yyerror("Semantic Error: Used before declared");
-    else if (!getInitializationStatus(entry)) 
+    
+    else if (entry->kind!= param && !getInitializationStatus(entry)) 
         yyerror("Semantic Error: Used before initialized"); 
 }
 

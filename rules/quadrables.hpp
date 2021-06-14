@@ -27,7 +27,9 @@ enum OperationType
     Q_JMP,
     Q_LABEL,
     Q_INC,
-    Q_DEC
+    Q_DEC,
+    Q_PUSH,
+    Q_POP
 };
 
 OperationType getOper(std::string opr)
@@ -107,6 +109,14 @@ OperationType getOper(std::string opr)
     if (opr == "--")
     {
         return Q_DEC;
+    }
+    if (opr == "push")
+    {
+        return Q_PUSH;
+    }
+    if (opr == "pop")
+    {
+        return Q_POP;
     }
 }
 
@@ -230,12 +240,15 @@ void reArrange()
     //     printf("temp: %s , %d \n", temp->Result, temp->Operation);
     //     temp = temp->next;
     // }
-    Quadruple *last2 = last->next;
-    last->next = tempHead;
-    temp = tempHead;
-    while (temp->next != NULL)
-        temp = temp->next;
-    temp->next = last2;
+    if (tempHead != NULL)
+    {
+        Quadruple *last2 = last->next;
+        last->next = tempHead;
+        temp = tempHead;
+        while (temp->next != NULL)
+            temp = temp->next;
+        temp->next = last2;
+    }
 }
 
 void printQuadrables()
