@@ -11,7 +11,6 @@ using namespace std;
 
 #define MAX_SIZE 100 //size of hash table
 
-
 struct SymbolTableEntry
 {
     string name;
@@ -26,7 +25,7 @@ struct SymbolTableEntry
 };
 
 ///Symbol table -> hashtable
-SymbolTableEntry *symbolTable[MAX_SIZE + 1]; //0-MAX-1
+SymbolTableEntry *symbolTable[MAX_SIZE]; //0-MAX-1
 //symbolTable[MAX_SIZE] -> temp
 
 //hash function
@@ -41,9 +40,28 @@ int hashFunc(char *str)
     return hash % MAX_SIZE;
 }
 
-//insert new entry in symbol table
-void insert(string varName, SymbolKind kind, DataType dataType, string value)
+//get dataatype from its char*
+DataType getDataTypeInsert(string dt)
 {
+    if (dt == "void")
+        return TYPE_VOID;
+    if (dt == "int")
+        return TYPE_INT;
+    if (dt == "double")
+        return TYPE_DOUBLE;
+    if (dt == "char")
+        return TYPE_CHAR;
+    if (dt == "string")
+        return TYPE_STRING;
+    if (dt == "bool")
+        return TYPE_BOOL;
+}
+
+//insert new entry in symbol table
+bool insert(string varName, SymbolKind kind, char *dt, bool initialized)
+{
+    DataType dataType = getDataTypeInsert(dt);
+
     char *name = new char[varName.length() + 1];
     strcpy(name, varName.c_str());
     int hashValue = hashFunc(name);
@@ -54,11 +72,8 @@ void insert(string varName, SymbolKind kind, DataType dataType, string value)
         toInsert->name = varName;
         toInsert->kind = kind;
         toInsert->dataType = dataType;
-        if (value != "") //empty string indicates NOT Intitialized!
-        {
-            toInsert->value = value;
-            toInsert->initialized = true;
-        }
+        toInsert->initialized = initialized;
+
         symbolTable[hashValue] = toInsert;
     }
     else
@@ -70,7 +85,7 @@ void insert(string varName, SymbolKind kind, DataType dataType, string value)
             if (varName == toInsert->name)
             {
                 //cout << varName << " -> Already exists" << endl;
-                return;
+                return false;
             }
             prev = toInsert;
             toInsert = toInsert->next;
@@ -79,13 +94,11 @@ void insert(string varName, SymbolKind kind, DataType dataType, string value)
         toInsert->name = varName;
         toInsert->kind = kind;
         toInsert->dataType = dataType;
-        if (value != "") //empty string indicates NOT Intitialized!
-        {
-            toInsert->value = value;
-            toInsert->initialized = true;
-        }
+        toInsert->initialized = initialized;
+
         prev->next = toInsert;
     }
+    return true;
 }
 
 //get entry of given var
@@ -131,6 +144,60 @@ void update(string varName, const char *value)
         toUpdate->initialized = true;
 }
 
+void clearSymbolTable()
+{
+    for (int i = 0; i < MAX_SIZE; i++)
+    {
+        symbolTable[i] = NULL;
+    }
+}
+string printKind(SymbolKind kind)
+{
+    if (kind == var)
+    {
+        return " - Type: var";
+    }
+    if (kind == constant)
+    {
+        return " - Type: constant";
+    }
+    if (kind == func)
+    {
+        return " - Type: func";
+    }
+    if (kind == param)
+    {
+        return " - Type: param";
+    }
+}
+string printType(DataType type)
+{
+    if (type == TYPE_INT)
+    {
+        return " - Type: TYPE_INT";
+    }
+    if (type == TYPE_DOUBLE)
+    {
+        return " - Type: TYPE_DOUBLE";
+    }
+    if (type == TYPE_CHAR)
+    {
+        return " - Type: TYPE_CHAR";
+    }
+    if (type == TYPE_VOID)
+    {
+        return " - Type: TYPE_VOID";
+    }
+    if (type == TYPE_BOOL)
+    {
+        return " - Type: TYPE_BOOL";
+    }
+    if (type == TYPE_STRING)
+    {
+        return " - Type: TYPE_STRING";
+    }
+}
+
 //print the symbol table contents
 string printSymbolTable()
 {
@@ -141,15 +208,12 @@ string printSymbolTable()
         while (temp != NULL)
         {
             ss << "Name: " << temp->name;
-            ss << " - Value: " << temp->value;
-            if (temp->kind == var)
-            {
-                ss << " - Type: var";
-            }
-            if (temp->dataType == TYPE_INT)
-            {
-                ss << " - Datatype: INT_TYPE\n";
-            }
+            if (temp->value != "")
+                ss << " - Value: " << temp->value;
+            ss << printKind(temp->kind);
+            ss << printType(temp->dataType);
+            ss << " - Initialized: " << temp->initialized << "\n";
+
             temp = temp->next;
         }
     }

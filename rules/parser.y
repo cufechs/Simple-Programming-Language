@@ -1,8 +1,12 @@
 %{
+#include <iostream>
+#include <fstream>
+#include <string>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include "Node.h"
+#include "quadrables.hpp"
+#include "symbolTable.hpp"
 
 #include "lex.yy.c"
 
@@ -11,11 +15,27 @@
 int yylex(void);
 int yyerror(char *s);
 
+//outputting logs:
+std::ofstream myfile;
 
-char *currentOperation;
+int noErrors=0;
+
+//Label counts
+int ifBlockCount = 0;
+int ifCount =0;
+int switchCount =0;
+int caseCount =0;
+int forCount =0;
+int whileCount =0;
+int doWhileCount =0;
+
+bool fromElse =false;
+int forEnd =0;
+char *currentOperation = 0;
+char *currentDeclarationID = 0;
 int currentDataType;
 int valueType;
-int identifierType;
+int identifierType,lastIdentifierType=-1;
 int firstOperandType, secondOperandType;
 int regCount = 0;
 int regNum = 0;
@@ -29,14 +49,24 @@ int tmpRegCount = 0;
 //     TYPE_VOID,
 //     TYPE_BOOL
 // };
-int getArithmeticResultInt(int a, int b, char op);
-double getArithmeticResultDouble(float a, float b, char op);
+int getArithmeticResultInt(int a, int b, std::string op);
+double getArithmeticResultDouble(float a, float b, std::string op);
+bool getArithmeticResultBool(bool a, bool b, std::string op);
+bool getArithmeticResultBoolWithInt(int a, int b, std::string op);
+bool getArithmeticResultBoolWithDouble(float a, float b, std::string op);
+
+Node* createUnaryExpression(char* idName, char* op);
 char* convertToCharArrayInt(int a); 
 char* convertToCharArrayDouble(double a); 
 Node *constantInt(int value);
 Node *constantDouble(double value);
+Node *constantChar(char value);
+Node *constantString(char* value);
+Node *constantBool(bool value);
 Node *createIdentifier(char* i);
-Node* evaluateExpression(char op, Node* operand1, Node* operand2);
+Node* evaluateExpression(std::string op, Node* operand1, Node* operand2);
+bool getBoolExpr(std::string op);
+void checkVarSemanticError(char *e);
 
 %}
 
@@ -46,6 +76,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
     char *idName;
     char *sVal;
     double dVal;
+    bool bVal;
     char* op;
     char value[32]; //general value for int, double, bool, char 
     Node *node;
@@ -57,6 +88,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %token DOUBLE_TYPE
 %token CHAR_TYPE
 %token BOOL_TYPE
+%token STRING_TYPE
 %token VOID
 
 // Keywords
@@ -76,13 +108,10 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %token SCAN
 %token STRING
 %token WHITESPACE
-%token STRING_TYPE
 %token SEMICOLON
 %token LEFT_BRACE
 
 // Operators
-%token INC
-%token DEC
 %token SHL
 %token SHR
 %token LOGIC_AND
@@ -101,7 +130,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 // %token<op> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
 // %type<op> assign_operation
 // %type<value> arithmetic_expression primitive_constants 
-// %token<value> '(' '-' ')'
+// %token<value> LEFT_ROUND '-' RIGHT_ROUND
 
 
 
@@ -110,12 +139,25 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 %token<iVal> INTEGER 
 %token<dVal> DOUBLE 
 %token<cVal> CHAR 
-%token<node> BOOL
+%token<bVal> BOOL
+//%token<sVal> STRING
+
 %type<node> identifier array_indexing
-%token<node> ADD_EQ SUB_EQ MULT_EQ DIV_EQ
+%token<node> ADD_EQ SUB_EQ MULT_EQ DIV_EQ INC DEC
 %type<node> assign_operation
-%type<node> arithmetic_expression  primitive_constants
-%token<node> '(' '-' ')' 
+%type<node> unary_expression
+%type<node> function_invoke
+%type<node> primitive_constants
+%type<node> declaration
+%type<node> parameter_list_dec
+%type<node> parameter_list
+%type<node> parameter_dec
+%type<node> parameter
+%type<node> sub_declaration
+%type<node> expression
+%type<node> sub_expression
+%type<node> arithmetic_expression 
+%token<node> LEFT_ROUND '-' RIGHT_ROUND 
 
 // Order matters here:
 %right<op>  ASSIGN_OP
@@ -137,7 +179,7 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 
 
 
-
+%nonassoc DECLAR
 %nonassoc PRECEED_ELSE
 %nonassoc ELSE
 %nonassoc UMINUS
@@ -149,14 +191,15 @@ Node* evaluateExpression(char op, Node* operand1, Node* operand2);
 
 start: start line_stmt {printf("\n"); }
      | line_stmt  {printf("\n"); }
+     | stmts
      ;
     
 line_stmt: function 
          | declaration 
          ;
 
-function: data_type IDENTIFIER '(' argument_list ')' scope_stmt
-        | data_type IDENTIFIER '(' argument_list ')' SEMICOLON {printf("function definition\n");}
+function: data_type IDENTIFIER LEFT_ROUND argument_list RIGHT_ROUND scope_stmt
+        | data_type IDENTIFIER LEFT_ROUND argument_list RIGHT_ROUND SEMICOLON {printf("function definition\n");}
         ;
 
 argument_list: arguments
@@ -181,118 +224,328 @@ stmt: scope_stmt
     | atomic_stmt
     ;
 
-atomic_stmt: if_block 
-            | while_block 
-            | for_block 
-            | switch_block 
-            | do_while_block SEMICOLON 
-            | case_block 
+atomic_stmt: if_block                           {   
+                                                    if(fromElse){
+                                                        std::string s2="LF";
+                                                        s2 += std::to_string(ifBlockCount);
+                                                        char* tp2 = new char[10];
+                                                        strcpy(tp2 ,s2.c_str());
+                                                        insertQuad(NULL,NULL,"LABEL",tp2,forEnd);   
+                                                        ifBlockCount++; 
+                                                        fromElse = false;
+                                                    }
+                                                }
+            | while_block                       {   
+                                                    std::string s="LWLS";
+                                                    s += std::to_string(whileCount);
+                                                    char* tp = new char[10];
+                                                    strcpy(tp ,s.c_str());
+                                                    insertQuad(NULL,NULL,"JMP",tp,forEnd); 
+                                                    std::string s2="LWLE";
+                                                    s2 += std::to_string(whileCount);
+                                                    char* tp2 = new char[10];
+                                                    strcpy(tp2 ,s2.c_str());
+                                                    insertQuad(NULL,NULL,"LABEL",tp2,forEnd);   
+                                                    whileCount++; 
+                                                
+                                                }
+            | for_block                         {   
+                                                    std::string s="LFRS";
+                                                    s += std::to_string(forCount);
+                                                    char* tp = new char[10];
+                                                    strcpy(tp ,s.c_str());
+                                                    insertQuad(NULL,NULL,"JMP",tp,-1); 
+                                                    std::string s2="LFRE";
+                                                    s2 += std::to_string(forCount);
+                                                    char* tp2 = new char[10];
+                                                    strcpy(tp2 ,s2.c_str());
+                                                    insertQuad(NULL,NULL,"LABEL",tp2,forEnd);   
+                                                    forCount++; 
+                                                }
+            | switch_block                      {   
+                                                    std::string s2="LSW";
+                                                    s2 += std::to_string(switchCount);
+                                                    char* tp2 = new char[10];
+                                                    strcpy(tp2 ,s2.c_str());
+                                                    insertQuad(NULL,NULL,"LABEL",tp2,forEnd);   
+                                                    switchCount++; 
+                                                }
+            | do_while_block SEMICOLON          
+            | case_block                        
             | declaration 
             | print 
             | scan 
-            | function_invoke SEMICOLON 
+            | function_invoke  
+            | function_declaration  
             | RETURN SEMICOLON 
             | CONTINUE SEMICOLON 
-            | BREAK SEMICOLON 
+            | BREAK SEMICOLON                               {printf("break:::\n");}
             | RETURN sub_expression SEMICOLON
             ;
 
-declaration: data_type assign_expression SEMICOLON  {printf("variable is initialized, current data type: %s, \n", currentType);}
-            | CONST data_type declaration_list SEMICOLON   
-            | declaration_list SEMICOLON 
-            | unary_expression SEMICOLON 
-            | data_type IDENTIFIER SEMICOLON        {printf("variable %s not initialized\n", $2);}
+declaration: data_type assign_expression SEMICOLON  %prec DECLAR        {
+                                                                            //printf("id: %s\n",currentDeclarationID);
+                                                                            if(!insert(currentDeclarationID,var,currentType,true))
+                                                                                yyerror("Semantic Error: Already assigned..");
+                                                                            // else 
+                                                                            //     insertQuad();
+                                                                        }
+            | CONST data_type assign_expression SEMICOLON    {if(!insert(currentDeclarationID,constant,currentType,true))
+                                                                    yyerror("Semantic Error: Already assigned..");
+                                                            }
+            | data_type declaration_list SEMICOLON                    
+            | unary_expression SEMICOLON                    {checkVarSemanticError(currentDeclarationID);}
+            | data_type IDENTIFIER SEMICOLON                {if(!insert(currentID,var,currentType,false))
+                                                                    yyerror("Semantic Error: Already assigned..");
+                                                            }
+            | assign_expression SEMICOLON                   {
+                                                                SymbolTableEntry *entry = getEntry(currentDeclarationID);
+                                                                if(entry!=NULL){    
+                                                                    if(entry->kind == constant)
+                                                                        yyerror("Semantic Error: Re-assigning const");
+
+                                                                    entry->initialized = true;
+                                                                }
+                                                            } 
             ;
 
 declaration_list: declaration_list COMMA sub_declaration
                 | sub_declaration 
                 ;
 
-sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
-                | identifier
+sub_declaration: assign_expression                                      {
+                                                                            if(!insert(currentDeclarationID,var,currentType,true))
+                                                                                yyerror("Semantic Error: Already assigned..");
+                                                                        } 
                 | array_indexing
                 ;
 
+////IF
+if_alone: IF LEFT_ROUND expression RIGHT_ROUND   {
+                                                    std::string s="L";
+                                                    s += std::to_string(ifCount);
+                                                    char* tp = new char[10];
+                                                    strcpy(tp ,s.c_str());
+                                                    printf("type of cond of if: %d\n",$3->dataType);
+                                                    if($3->dataType == TYPE_BOOL)
+                                                        insertQuad($3->tmpName,NULL,"JZ",tp,forEnd);   
+                                                    else 
+                                                        yyerror("Semantic Error: Conditions MUST be of bool type");
+                                                 } 
+        ;  
 
-// declaration: data_type declaration_list SEMICOLON  {printf("variable is initialized, current data type: %s, \n", currentType);}
-//             | CONST data_type declaration_list SEMICOLON   
-//             | declaration_list SEMICOLON 
-//             | unary_expression SEMICOLON 
-//             ;
+if_stm: if_alone stmt               {
+                                        std::string s="LF";
+                                        s += std::to_string(ifBlockCount);
+                                        char* tp = new char[10];
+                                        strcpy(tp ,s.c_str());
+                                        insertQuad(NULL,NULL,"JMP",tp,forEnd);
+                                        std::string s2="L";
+                                        s2 += std::to_string(ifCount);
+                                        char* tp2 = new char[10];
+                                        strcpy(tp2 ,s2.c_str());
+                                        insertQuad(NULL,NULL,"LABEL",tp2,forEnd);  
+                                        ifCount++;
 
-// declaration_list: declaration_list COMMA sub_declaration
-//                 | sub_declaration 
-//                 ;
-
-// sub_declaration: assign_expression {printf("&&&&&&&&&&&&&&&&&&&&&&&&&\n");} 
-//                 | identifier
-//                 | array_indexing
-//                 ;
-
-if_block: IF '(' expression ')' stmt %prec PRECEED_ELSE {printf("IF Block prec\n");}
-        | IF '(' expression ')' stmt ELSE stmt {printf("IF Block\n");}
+                                    } 
         ;
 
-for_block: FOR '(' expression_statement expression_statement ')' stmt 
-         | FOR '(' expression_statement expression_statement expression_statement ')' stmt 
+if_block: if_stm %prec PRECEED_ELSE 
+        | if_stm ELSE {fromElse=true;} stmt          
+        ;
+
+////FOR
+for_block: FOR LEFT_ROUND for_init for_middle for_end RIGHT_ROUND stmt 
          ;
 
-while_block: WHILE '(' expression ')' stmt 
-           ;        
+for_init: declaration               {
+                                            std::string s2="LFRS";
+                                            s2 += std::to_string(forCount);
+                                            char* tp2 = new char[10];
+                                            strcpy(tp2 ,s2.c_str());
+                                            insertQuad(NULL,NULL,"LABEL",tp2,forEnd);
+                                    }
+        | SEMICOLON
+        ;
 
-do_while_block: DO stmt WHILE '(' expression ')'
-                ;
+for_middle: expression SEMICOLON {
+                                    std::string s2="LFRE";
+                                    s2 += std::to_string(forCount);
+                                    char* tp2 = new char[10];
+                                    strcpy(tp2 ,s2.c_str());
+                                    if($1->dataType == TYPE_BOOL)
+                                        insertQuad($1->tmpName,NULL,"JZ",tp2,forEnd); 
+                                    else 
+                                        yyerror("Semantic Error: Conditions MUST be of bool type");
 
-switch_block: SWITCH '(' expression ')' stmt   {printf("switch\n");}
+                                    forEnd++;
+                                 }
+            | SEMICOLON
             ;
 
-case_block: CASE expression ':' stmt   {printf("case\n");}
-          | DEFAULT ':' stmt            {printf("default case\n");}
-          ;
+for_end: expression              {
+                                    forEnd--;
+                                 }
+        | /*epsilon*/
+        ;
 
-expression_statement: expression SEMICOLON
-          | SEMICOLON
+////WHILE
+while: WHILE            {
+                            std::string s2="LWLS";
+                            s2 += std::to_string(whileCount);
+                            char* tp2 = new char[10];
+                            strcpy(tp2 ,s2.c_str());
+                            insertQuad(NULL,NULL,"LABEL",tp2,forEnd); 
+                        }
+;
+while_stmt: while LEFT_ROUND expression RIGHT_ROUND {
+                                                        std::string s2="LWLE";
+                                                        s2 += std::to_string(whileCount);
+                                                        char* tp2 = new char[10];
+                                                        strcpy(tp2 ,s2.c_str());
+                                                        if($3->dataType == TYPE_BOOL)
+                                                            insertQuad($3->tmpName,NULL,"JZ",tp2,forEnd);   
+                                                        else 
+                                                            yyerror("Semantic Error: Conditions MUST be of bool type");
+                                                    }
+;
+
+while_block:while_stmt stmt 
+           ;        
+
+////DO WHILE
+do: DO                      {std::string s2="LDW";
+                                s2 += std::to_string(doWhileCount);
+                                char* tp2 = new char[10];
+                                strcpy(tp2 ,s2.c_str());
+                                insertQuad(NULL,NULL,"LABEL",tp2,forEnd);  
+                            }
+;
+do_while_block: do stmt WHILE LEFT_ROUND expression RIGHT_ROUND     {   
+                                                                        if($5->dataType == TYPE_BOOL)
+                                                                                {
+                                                                                    std::string s2="LDW";
+                                                                                    s2 += std::to_string(doWhileCount);
+                                                                                    char* tp2 = new char[10];
+                                                                                    strcpy(tp2 ,s2.c_str());
+                                                                                    printf("typosaasaads %d\n",$5->dataType);
+                                                                                    insertQuad($5->tmpName,NULL,"JNZ",tp2,forEnd);   
+                                                                                    doWhileCount++; 
+                                                                                }
+                                                                        else 
+                                                                            yyerror("Semantic Error: Conditions MUST be of bool type");
+                                                                    
+                                                                    }
+;
+
+////SWITCH
+switch_alone: SWITCH LEFT_ROUND expression RIGHT_ROUND          {if(!($3->dataType == TYPE_INT || $3->dataType == TYPE_BOOL || $3->dataType == TYPE_DOUBLE || $3->dataType == TYPE_CHAR))
+                                                                    yyerror("Semantic Error: Switch Case must have PRIMITIVE constant!!");
+                                                                }
+            ;   
+
+switch_block: switch_alone stmt   {printf("switch\n");}
+            ;
+case_alone: CASE expression ':'         {
+                                            if($2->isPrimitiveConst)
+                                                printf("yess i am a constsnt\n");
+
+                                            printf("var= %s , gowa case = %s\n",currentID,$2->tmpName);
+                                            Node * id = createIdentifier(currentID);
+                                            Node * par= evaluateExpression("==", id, $2);
+                                            insertQuad(currentID, $2->tmpName,"==",par->tmpName,forEnd);
+                                            std::string s2="LCS";
+                                            s2 += std::to_string(caseCount);
+                                            char* tp2 = new char[10];
+                                            strcpy(tp2 ,s2.c_str());
+                                            insertQuad(par->tmpName,NULL,"JZ",tp2,forEnd);
+
+                                        }
+        ;
+default_alone: DEFAULT ':'      
+;
+case_block: case_alone stmt             {   
+                                            std::string s="LSW";
+                                            s += std::to_string(switchCount);
+                                            char* tp = new char[10];
+                                            strcpy(tp ,s.c_str());
+                                            insertQuad(NULL,NULL,"JMP",tp,forEnd); 
+                                            std::string s2="LCS";
+                                            s2 += std::to_string(caseCount);
+                                            char* tp2 = new char[10];
+                                            strcpy(tp2 ,s2.c_str());
+                                            insertQuad(NULL,NULL,"LABEL",tp2,forEnd);  
+                                            caseCount++; 
+                                        }
+          | default_alone stmt            {printf("default case\n");}
           ;
 
 expression: expression COMMA sub_expression
           | sub_expression
           ;
 
-sub_expression: sub_expression '>' sub_expression
-                | sub_expression '<' sub_expression
-                | sub_expression EQ sub_expression
-                | sub_expression NE sub_expression
-                | sub_expression LE sub_expression
-                | sub_expression GE sub_expression
-                | sub_expression SHR sub_expression
-                | sub_expression SHL sub_expression
-                | sub_expression '^' sub_expression
-                | sub_expression '|' sub_expression
-                | sub_expression '&' sub_expression
-                | sub_expression LOGIC_AND sub_expression
-                | sub_expression LOGIC_OR sub_expression
-                | '!' sub_expression
-                | arithmetic_expression
+sub_expression: arithmetic_expression
                 | assign_expression
-                | unary_expression 
+                | unary_expression      
                 ;
 
 assign_expression: identifier assign_operation arithmetic_expression {
-                                                                identifierType = currentDataType; 
-                                                                printf("IDENTIFIER: %s ",$1->idName); 
-                                                                printf("Assign operation: %s ", $2); 
-                                                                printf("Value: %s\n", $3);
-                                                            }
-                 | identifier assign_operation function_invoke
-                 | identifier assign_operation unary_expression
-                 ;
+                                                                        currentDeclarationID=$1->idName;
+                                                                        identifierType = currentDataType;
+                                                                        insertQuad($3->tmpName,NULL,"=",currentDeclarationID,forEnd);
+                                                                        if ($1->dataType!= $3->dataType) {
+                                                                            yyerror("Type mismatch");
+                                                                        }
+                                                                        
+                                                                    }
+                 | identifier assign_operation function_invoke      {
+                                                                        // currentDeclarationID=$1->idName;
+                                                                        // identifierType = currentDataType;
+                                                                        // insertQuad($3->tmpName,NULL,"=",currentDeclarationID,forEnd);
+                                                                        // if ($1->dataType!= $3->dataType) {
+                                                                        //     yyerror("Type mismatch");
+                                                                        // }
+                                                                        
+                                                                    }
+                 | identifier assign_operation unary_expression      {
+                                                                        currentDeclarationID=$1->idName;
+                                                                        identifierType = currentDataType;
+                                                                        insertQuad($3->tmpName,NULL,"=",currentDeclarationID,forEnd);
+                                                                        if ($1->dataType!= $3->dataType) {
+                                                                            yyerror("Type mismatch");
+                                                                        }
+                                                                        
+                                                                    }
 
-function_invoke: identifier '(' parameter_list ')'  
-               | identifier '(' ')'  
+                 ;
+////FUNCTIONS
+
+function_declaration: data_type identifier LEFT_ROUND parameter_list_dec RIGHT_ROUND stmt                {
+                                                                                                                    //printf("id: %s\n",currentDeclarationID);
+                                                                                                                    if(!insert(currentDeclarationID,var,currentType,true))
+                                                                                                                        yyerror("Semantic Error: Already assigned..");
+                                                                                                                    // else 
+                                                                                                                    //     insertQuad();
+                                                                                                                }
+;
+parameter_list_dec: parameter_list_dec COMMA parameter_dec
+              | parameter_dec                       {
+                                                        printf("param =%s \n",$1->tmpName);
+                                                    }
+              ;
+
+parameter_dec: data_type identifier             {$$ = createIdentifier($2->tmpName);}
+            | /* */
+         ;
+
+function_invoke: identifier LEFT_ROUND parameter_list RIGHT_ROUND SEMICOLON 
+               | identifier LEFT_ROUND RIGHT_ROUND SEMICOLON
                ;
 
 parameter_list: parameter_list COMMA parameter
-              | parameter
+              | parameter                       {
+                                                    printf("param =%s \n",$1->tmpName);
+                                                }
               ;
 
 parameter: sub_expression
@@ -302,41 +555,83 @@ parameter: sub_expression
   
     /// source  https : //www.gnu.org/software/bison/manual/html_node/Contextual-Precedence.html
 arithmetic_expression: arithmetic_expression '+' arithmetic_expression {
-                                                                        $$ = evaluateExpression('+', $1, $3);
-                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
-                                                                        printf("Arithmetic :+: %d + %d \n", $1->iVal, $3->iVal);
+                                                                        $$ = evaluateExpression("+", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"+",$$->tmpName,forEnd);
                                                                        }
                      | arithmetic_expression '-' arithmetic_expression {
-                                                                        $$ = evaluateExpression('-', $1, $3);
-                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
-                                                                        printf("Arithmetic :-: %d - %d \n", $1->iVal, $3->iVal);
-                                                                        printf("[DEBUG] Final result :  %d\n", $$->iVal);
+                                                                        $$ = evaluateExpression("-", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"-",$$->tmpName,forEnd);
                                                                        }
                      | arithmetic_expression '*' arithmetic_expression {
-                                                                        $$ = evaluateExpression('*', $1, $3);
-                                                                        printf("tmp name: %s\n", $$->tmpName.c_str());
-                                                                        printf("Arithmetic :*: %d * %d \n", $1->iVal, $3->iVal);
+                                                                        $$ = evaluateExpression("*", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"*",$$->tmpName,forEnd);
                                                                        }
                      | arithmetic_expression '/' arithmetic_expression {
-                                                                        $$ = evaluateExpression('/', $1, $3);
-                                                                        printf("Arithmetic :/: %d / %d \n", $1->iVal, $3->iVal);
+                                                                        $$ = evaluateExpression("/", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"/",$$->tmpName,forEnd);
                                                                        }
-                     | arithmetic_expression '%' arithmetic_expression 
-                     | '(' arithmetic_expression ')'
+                    | arithmetic_expression '%' arithmetic_expression 
+                    | arithmetic_expression LOGIC_AND arithmetic_expression              {
+                                                                        $$ = evaluateExpression("&&", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"&&",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression LOGIC_OR arithmetic_expression               {
+                                                                        $$ = evaluateExpression("||", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"||",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression '>' arithmetic_expression  {
+                                                                        $$ = evaluateExpression(">", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,">",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression '<' arithmetic_expression {
+                                                                        $$ = evaluateExpression("<", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"<",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression EQ arithmetic_expression  {
+                                                                        $$ = evaluateExpression("==", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"==",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression NE arithmetic_expression  {
+                                                                        $$ = evaluateExpression("!=", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"!=",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression LE arithmetic_expression    {
+                                                                        $$ = evaluateExpression("<=", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,"||",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression GE arithmetic_expression   {
+                                                                        $$ = evaluateExpression(">=", $1, $3);
+                                                                        insertQuad($1->tmpName, $3->tmpName,">=",$$->tmpName,forEnd);
+                                                                       }
+                    | arithmetic_expression SHR arithmetic_expression  
+                    | arithmetic_expression SHL arithmetic_expression
+                    | arithmetic_expression '^' arithmetic_expression
+                    | arithmetic_expression '|' arithmetic_expression
+                    | arithmetic_expression '&' arithmetic_expression
+                    | '!' arithmetic_expression
+                     | LEFT_ROUND arithmetic_expression RIGHT_ROUND
                      | '-' arithmetic_expression %prec UMINUS
-                     | identifier 
-                     | primitive_constants                              {
-                                                                        printf("Arithmetic : %d\n", $1->iVal);
+                     | identifier                                       {
+                                                                            checkVarSemanticError($1->idName);
                                                                         }
+                     | primitive_constants   
+                      
                      ;
   
-unary_expression: IDENTIFIER INC  {printf("POST INCREMENT\n");}
-               | IDENTIFIER DEC   {printf("POST DECREMENT\n");}
-               | INC IDENTIFIER   {printf("PRE INCREMENT\n");}
-               | DEC IDENTIFIER   {printf("PRE DECREMENT\n");}
+unary_expression:  IDENTIFIER INC                   { $$ = createUnaryExpression(currentID, "++");}  
+               | IDENTIFIER DEC                     { $$ = createUnaryExpression(currentID, "--");} 
+               | INC IDENTIFIER                     { $$ = createUnaryExpression(currentID, "++");} 
+               | DEC IDENTIFIER                     { $$ = createUnaryExpression(currentID, "--");} 
                ;
 
-identifier: IDENTIFIER {$$ = createIdentifier($1); printf("IDENTIFIER NAME: %s\n", $1);}
+identifier: IDENTIFIER {        
+                                
+                                $$ = createIdentifier($1); 
+                                // SymbolTableEntry *entry = getEntry($1);
+                                // if(entry!=NULL)
+                                //     lastIdentifierType=getDatatype(entry);
+                                printf("IDENTIFIER NAME: %s\n", $1);
+                        }
           ;
 
 
@@ -345,29 +640,31 @@ data_type: INT_TYPE         {currentDataType = TYPE_INT;}
          | DOUBLE_TYPE      {currentDataType = TYPE_DOUBLE;}
          | BOOL_TYPE        {currentDataType = TYPE_BOOL;}
          | CHAR_TYPE        {currentDataType = TYPE_CHAR;}
+         | STRING_TYPE      {currentDataType = TYPE_STRING;}
          | VOID             {currentDataType = TYPE_VOID;}
          ;
 
    //values of integer, char, or double
 primitive_constants: INTEGER    {$$ = constantInt($1); }
-               | CHAR           {printf("CHAR VALUE : %c\n", $1);}
+               | CHAR           {$$ = constantChar($1);}
                | DOUBLE         {$$ = constantDouble($1);}
-               | BOOL
+               | STRING         
+               | BOOL           {$$ = constantBool($1);}
                ;
 
-scan: SCAN '(' STRING COMMA '&' IDENTIFIER ')' SEMICOLON
+scan: SCAN LEFT_ROUND STRING COMMA '&' IDENTIFIER RIGHT_ROUND SEMICOLON
     ;
 
-print: PRINT '(' STRING ')' SEMICOLON
-     | PRINT '(' STRING COMMA IDENTIFIER ')' SEMICOLON
-     | PRINT '(' STRING COMMA primitive_constants ')' SEMICOLON
+print: PRINT LEFT_ROUND STRING RIGHT_ROUND SEMICOLON
+     | PRINT LEFT_ROUND STRING COMMA IDENTIFIER RIGHT_ROUND SEMICOLON
+     | PRINT LEFT_ROUND STRING COMMA primitive_constants RIGHT_ROUND SEMICOLON
      ;
 
 // lhs: IDENTIFIER 
 //    | array_indexing
 //    ;
 
-array_indexing: identifier '[' array_index ']'  {printf("array***********************\n");}
+array_indexing: identifier '[' array_index ']' 
               | identifier '[' array_index ']' '[' array_index ']'
               ;
 
@@ -398,52 +695,90 @@ char* convertToCharArrayDouble(double a) {
     return buf;
 }
 
-int getArithmeticResultInt(int a, int b, char op) {
+int getArithmeticResultInt(int a, int b, std::string x) {
+    
     int res = 0;
     
-    switch(op) {
-        case '+':
+        if(x== "+")
             res = a + b;
-            break;
-        case '*':
+        else if(x== "*")
             res = a * b;
-            break;
-        case '-':
+        else if(x== "-")
             res = a - b;
-            break;
-        case '/':
+        else if(x== "/"){
             if (b == 0) yyerror("Division by zero");
             res = a / b;
-            break;
-        default:
+        }
+        else
             printf("No operation");
-            break;
-    }
+
     return res;
 } 
 
-double getArithmeticResultDouble(float a, float b, char op) {
+double getArithmeticResultDouble(float a, float b, std::string x) {
     double res = 0.0;
     printf("a = %f   b = %f\n", a, b);
-    switch(op) {
-        case '*':
-            res = a * b;
-            break;
-        case '+':
+            if(x== "+")
             res = a + b;
-            break;
-        case '-':
+        else if(x== "*")
+            res = a * b;
+        else if(x== "-")
             res = a - b;
-            break;
-        case '/':
-            if (b == 0.0) yyerror("Division by zero");
+        else if(x== "/"){
+            if (b == 0) yyerror("Division by zero");
             res = a / b;
-            break;
-        default:
+        }
+        else
             printf("No operation");
-            break;
-    }
     printf("RES::: %f\n", res);
+    return res;
+}
+bool getArithmeticResultBool(bool a, bool b, std::string x) {
+
+    bool res = false;
+    if(x== "&&")
+            res = a && b;
+    else if(x== "||")
+            res = a || b;
+    else
+            printf("No operation");
+    return res;
+}
+bool getArithmeticResultBoolWithInt(int a, int b, std::string x) {
+
+    bool res = false;
+    if(x== ">")
+            res = a > b;
+    else if(x== "<")
+            res = a < b;
+    else if(x== ">=")
+            res = a >= b;
+    else if(x== "<=")
+            res = a <= b;
+    else if(x== "==")
+            res = a == b;
+    else if(x== "!=")
+            res = a != b;
+    else
+            printf("No operation");
+    return res;
+}
+bool getArithmeticResultBoolWithDouble(float a, float b, std::string x) {
+    bool res = false;
+    if(x== ">")
+            res = a > b;
+    else if(x== "<")
+            res = a < b;
+    else if(x== ">=")
+            res = a >= b;
+    else if(x== "<=")
+            res = a <= b;
+    else if(x== "==")
+            res = a == b;
+    else if(x== "!=")
+            res = a != b;
+    else
+            printf("No operation");
     return res;
 }
 
@@ -459,6 +794,9 @@ Node *constantInt(int value) {
     p->iVal = value;
     p->line_num = yylineno;
     p->dataType = TYPE_INT;
+    p->isPrimitiveConst = true;
+    p->tmpName = new char[10];
+    strcpy(p->tmpName ,to_string(value).c_str());
     return p;
 }
 
@@ -474,7 +812,66 @@ Node *constantDouble(double value) {
     p->dVal = value;
     p->line_num = yylineno;
     p->dataType = TYPE_DOUBLE;
+    p->isPrimitiveConst = true;
+    p->tmpName = new char[10];
+    strcpy(p->tmpName ,to_string(value).c_str());
+    return p;
+}
 
+Node *constantChar(char value) {
+    Node *p;
+
+    /* allocate node */
+    if ((p = (Node*)malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_CONST_VALUE;
+    p->cVal = value;
+    p->line_num = yylineno;
+    p->dataType = TYPE_CHAR;
+    p->isPrimitiveConst = true;
+    p->tmpName = new char[10];
+    std::string s;
+    s += value;
+    //p->tmpName[0] = value;
+    strcpy(p->tmpName ,s.c_str());
+    return p;
+}
+
+// Node *constantString(char* value) {
+//     Node *p;
+
+//     /* allocate node */
+//     if ((p = (Node*)malloc(sizeof(Node))) == NULL)
+//         yyerror("out of memory");
+
+//     /* copy information */
+//     p->nodeType = NODE_CONST_VALUE;
+//     p->sVal = new char[10];
+//     strcpy(p->sVal ,to_string(value).c_str());
+//     p->line_num = yylineno;
+//     p->dataType = TYPE_STRING;
+//     p->tmpName = new char[10];
+//     strcpy(p->tmpName ,value);
+//     return p;
+// }
+
+Node *constantBool(bool value) {
+    Node *p;
+
+    /* allocate node */
+    if ((p = (Node*)malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
+
+    /* copy information */
+    p->nodeType = NODE_CONST_VALUE;
+    p->bVal = value;
+    p->line_num = yylineno;
+    p->dataType = TYPE_BOOL;
+    p->isPrimitiveConst = true;
+    p->tmpName = new char[10];
+    strcpy(p->tmpName ,to_string(value).c_str());
     return p;
 }
 
@@ -489,91 +886,127 @@ Node *createIdentifier(char* i) {
     p->nodeType = NODE_ID;
     //strcpy(p->idName, i);
     p->idName = strdup(i);
+    p->tmpName = p->idName;
     p->line_num = yylineno;
-
+    SymbolTableEntry *entry = getEntry(p->idName);
+    if(entry==NULL)
+        p->dataType = getDataTypeInsert(currentType);
+    else 
+        p->dataType = entry->dataType;
+    printf("currtype: %d\n",p->dataType);
     return p;
 }
 
-Node* evaluateExpression(char op, Node* operand1, Node* operand2) {
-    Node* res;
+bool getBoolExpr(std::string op){
+    return (op == ">" ||op == "<"||op == "=="||op == "!="||op == ">="||op == "<=");
+}
 
+Node* evaluateExpression(std::string op, Node* operand1, Node* operand2) {
+    Node* res;
     if (operand1->dataType != operand2->dataType) {
         yyerror("Type mismatch");
     }
 
     if ((res = (Node*)malloc(sizeof(Node))) == NULL)
-        yyerror("out of memory");
+       yyerror("out of memory");
 
-    res->tmpName = "$t" + std::to_string(tmpRegCount);
+    std::string temp = "$t" + std::to_string(tmpRegCount);
+    //res->tmpName = temp.c_str();
     tmpRegCount++;
     // assuming now that both are of the same type
-    if (operand1->dataType == TYPE_INT) {
+    bool boolExpr = getBoolExpr(op);
+    if (!boolExpr && operand1->dataType == TYPE_INT) {
         int tmp_res = getArithmeticResultInt(operand1->iVal, operand2->iVal, op);
         res->nodeType = NODE_CONST_VALUE;
         res->iVal = tmp_res;
         res->line_num = yylineno;
         res->dataType = TYPE_INT;
-    } else if (operand1->dataType == TYPE_DOUBLE) {
+    } else if (!boolExpr && operand1->dataType == TYPE_DOUBLE) {
         double tmp_res = getArithmeticResultDouble(operand1->dVal, operand2->dVal, op);
         res->nodeType = NODE_CONST_VALUE;
         res->dVal = tmp_res;
         res->line_num = yylineno;
         res->dataType = TYPE_DOUBLE;
+    
+    } else if (operand1->dataType == TYPE_BOOL) {
+        bool tmp_res = getArithmeticResultBool(operand1->bVal, operand2->bVal, op);
+        res->nodeType = NODE_CONST_VALUE;
+        res->bVal = tmp_res;
+        res->line_num = yylineno;
+        res->dataType = TYPE_BOOL;
     }
-
+    else if (boolExpr && operand1->dataType == TYPE_INT) {
+        bool tmp_res = getArithmeticResultBoolWithInt(operand1->bVal, operand2->bVal, op);
+        res->nodeType = NODE_CONST_VALUE;
+        res->bVal = tmp_res;
+        res->line_num = yylineno;
+        res->dataType = TYPE_BOOL;
+    } else if (boolExpr && operand1->dataType == TYPE_DOUBLE) {
+        bool tmp_res = getArithmeticResultBoolWithDouble(operand1->bVal, operand2->bVal, op);
+        res->nodeType = NODE_CONST_VALUE;
+        res->bVal = tmp_res;
+        res->line_num = yylineno;
+        res->dataType = TYPE_BOOL;
+    } 
+    
+    //lastIdentifierType = res->dataType;
+    res->tmpName = new char[10];
+    strcpy(res->tmpName ,temp.c_str());
     return res;
 }
 
-Node *operation(char op, Node* operand1, Node* operand2) {
-    Node* p;
+Node* createUnaryExpression(char* idName, char* op) {
+    Node* res;
 
-    // check if operand1 and operand2 are iniialized
-    // check if operand1 and operand2 are of type NODE_ID or NODE_CONST_VALUE
-    if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_CONST_VALUE) {
+    if ((res = (Node*)malloc(sizeof(Node))) == NULL)
+        yyerror("out of memory");
 
-    } else if (operand1->nodeType == NODE_CONST_VALUE && operand2->nodeType == NODE_ID) {
-
-    } else if (operand1->nodeType == NODE_ID && operand2->nodeType == NODE_CONST_VALUE) {
-
+    if (strcmp(currentType, "int") != 0 && strcmp(currentType, "double") != 0) {
+    
+        yyerror("Type mismatch. Cannot increment a non numeric token");
     }
-    switch(op) {
-        case '+':
+    printf("ana geeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeet\n");
+    res->idName = strdup(idName);
+    // res->nodeType = NODE_POST_PRE;
+    // res->post_pre_op = std::string(op);
+    checkVarSemanticError(currentID);
+    insertQuad(NULL, NULL,std::string(op) ,currentID,forEnd);
+    return res;
 
-            break;
-        case '-':
+}
 
-            break;
-        case '*':
-
-            break;
-        case '/':
-
-            break;
-        default:
-            printf("%c operation is not supported\n", op);
-    }
-
-    /* allocate node, extending op array */
-    // if ((p = malloc(sizeof(nodeType) + (nops-1) * sizeof(nodeType *))) == NULL)
-    //     yyerror("out of memory");
-
-
-    return p;
+void checkVarSemanticError(char *e){
+    SymbolTableEntry *entry = getEntry(e);
+    if(entry==NULL)
+        yyerror("Semantic Error: Used before declared");
+    else if (!getInitializationStatus(entry)) 
+        yyerror("Semantic Error: Used before initialized"); 
 }
 
 int main(int argc, char *argv[]) {
     printf("\n\n********* Simple Programming Language Compiler ********* \n\n");
-
+    clearSymbolTable();
     yyin = fopen(argv[1], "r");
-
+    myfile.open("log.txt");
     yyparse();
-    printf("\nNo errors in input file!\n");
+    if(noErrors==0){
+        printf("\nNo errors in input file!\n");
+        printf("\nSymbol Table:\n");
+        std::cout << printSymbolTable() <<std::endl;
 
+        printf("\nQuadrables:\n");
+        printQuadrables();
+    }
+    else {
+        printf("\nFile has %d errors in log file!\n",noErrors);
+    }
+    myfile.close();
     fclose(yyin);
     return 0;
 }
 
 int yyerror(char *s) {
     printf("Error in line: %d, with message %s at token: %s\n", yylineno, s, yytext);
-    exit(0);
+    noErrors++;
+    myfile << "Error in line: "<< yylineno << ", with message "<< s << " at token: "<<yytext<<"\n";
 }
