@@ -2,6 +2,10 @@
 
 N is a simple programming language compiler similar to a mix between C/C++ built using Lex and Yacc.
 
+# N Compiler GUI SS
+
+![if](https://user-images.githubusercontent.com/57719752/122584469-ae9b9d00-d05a-11eb-8335-2766e9116a0e.png)
+
 # How to Use
 
 ### 1. Install Lex & Yacc
